@@ -421,7 +421,7 @@ string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
 }
 void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
-    http_client client(L"http://3.80.64.123:8081/balance");
+    http_client client(L"http://ec2-3-80-64-123.compute-1.amazonaws.com:8081/balance");
     auto response = client.request(methods::GET, balAddress);
     wcout << response.get().extract_utf16string().get() << endl;
     auto buf = response.get().body().streambuf();
@@ -680,7 +680,7 @@ void serverTransfer(http_request request) {
                         encoder.decode(plaintext, res);
                         cout << fixed << setprecision(2) << res[0] - am << endl;
                         if (am <= res[0] + accFrom->getOverdraft() && am > 0.00999) {
-                            http_client client2(L"http://3.80.64.123:8081/transfer");
+                            http_client client2(L"http://ec2-3-80-64-123.compute-1.amazonaws.com:8081/transfer");
                             auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
                             wstring toSendFile = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress()) + L"," + std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accTo->getBalanceAddress()) + L"," + fileName;
                             auto response = client2.request(methods::PUT, toSendFile, f.streambuf());
@@ -1018,7 +1018,7 @@ void serverAddDebits(http_request request) {
                             ciphertext.save(outFile);
                             outFile.close();
                             wstring toSend = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
-                            http_client client(L"http://3.80.64.123:8081/debits");
+                            http_client client(L"http://ec2-3-80-64-123.compute-1.amazonaws.com:8081/debits");
                             auto f = file_stream<char>::open_istream(toSend, std::ios::binary).get();
                             auto response = client.request(methods::POST, toSend, f.streambuf());
                             DirectDebit* debit = new DirectDebit(0, from, to, address, expression, nowTime);
@@ -1087,7 +1087,7 @@ void serverRemoveDebit(http_request request) {
                                 std::string address = d->getAmountAddress();
                                 wstring add = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
                                 cout << address << endl;
-                                http_client client(L"http://3.80.64.123:8081/debits");
+                                http_client client(L"http://ec2-3-80-64-123.compute-1.amazonaws.com:8081/debits");
                                 auto response = client.request(methods::DEL, add);
                                 debits->removeDebit(d);
                                 remove(address.c_str());
