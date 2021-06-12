@@ -179,14 +179,14 @@ void deleteDebit(http_request request) {
 int main()
 {
     loadCKKSParams(*params);
-    http_listener balanceListener(L"http://3.80.64.123:8081/balance");
+    http_listener balanceListener(L"http://localhost:8081/balance");
     balanceListener.support(methods::GET, sendBalance);
     balanceListener
         .open()
         .then([&balanceListener]() {wcout << (L"Starting to listen for balance requests") << endl; })
         .wait();
 
-    http_listener transferListener(L"http://3.80.64.123:8081/transfer");
+    http_listener transferListener(L"http://localhost:8081/transfer");
     transferListener.support(methods::POST, additionalFile);
     transferListener.support(methods::PUT, transaction);
     transferListener
@@ -194,7 +194,7 @@ int main()
         .then([&transferListener]() {wcout << (L"Starting to listen for transaction requests") << endl; })
         .wait();
 
-    http_listener debitListener(L"http://3.80.64.123:8081/debits");
+    http_listener debitListener(L"http://localhost:8081/debits");
     debitListener.support(methods::POST, directDebit);
     debitListener.support(methods::DEL, deleteDebit);
     debitListener
