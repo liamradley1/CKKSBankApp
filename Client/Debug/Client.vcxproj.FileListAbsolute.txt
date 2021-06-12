@@ -1,0 +1,2 @@
+C:\Users\liamr\source\repos\Client\Debug\Client.exe
+C:\Users\liamr\source\repos\Client\Debug\Client.pdb

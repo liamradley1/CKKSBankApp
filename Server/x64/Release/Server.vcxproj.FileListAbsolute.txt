@@ -1,0 +1,2 @@
+C:\Users\liamr\source\repos\Server\x64\Release\Server.exe
+C:\Users\liamr\Documents\GitHub\project\Server\x64\Release\Server.vcxproj.CopyComplete

@@ -1,4 +1,3 @@
-
 *.db
 *.ipch
 *.json
@@ -10,7 +9,6 @@ Client/.vs/Client/v16/.suo
 *.ilk
 *.log
 *.tlog
-*.txt
 *.idb
 *.CopyComplete
 *.db-shm

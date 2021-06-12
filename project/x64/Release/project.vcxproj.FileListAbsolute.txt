@@ -1,0 +1,6 @@
+C:\Users\liamr\Documents\GitHub\project\project\x64\Release\project.vcxproj.CopyComplete
+C:\Users\liamr\Documents\GitHub\project\project\x64\Release\project.exe
+C:\Users\liamr\Documents\GitHub\project\project\x64\Release\libssl-1_1-x64.dll
+C:\Users\liamr\Documents\GitHub\project\project\x64\Release\libcrypto-1_1-x64.dll
+C:\Users\liamr\Documents\GitHub\project\project\x64\Release\zlib1.dll
+C:\Users\liamr\Documents\GitHub\project\project\x64\Release\zstd.dll
