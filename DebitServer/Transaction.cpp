@@ -25,11 +25,3 @@ std::string Transaction::printTransaction() {
 std::string Transaction::getAmount() {
 	return this->amountAddress;
 }
-
-int Transaction::getTo() {
-	return this->otherAccount->getId();
-}
-
-int Transaction::getTime() {
-	return this->timestamp;
-}

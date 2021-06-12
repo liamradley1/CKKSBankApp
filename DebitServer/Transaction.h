@@ -18,6 +18,4 @@ public:
 
 	std::string printTransaction();
 	std::string getAmount();
-	int getTo();
-	int getTime();
 };

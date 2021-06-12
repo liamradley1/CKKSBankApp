@@ -1,324 +1,3 @@
-//#include <seal/seal.h>
-//#include "TCPHandler.h"
-//#include "Account.h"
-//#include <iostream>
-//#include <cstdio>
-//
-//int clientLoginSequence(TCPHandler handler, SOCKET& ConnectSocket, SOCKET& ListenSocket, SOCKET& ServerSocket) {
-//    int id = 0;
-//    std::cout << "Connection established! Enter your account ID, or type 0 to exit :" << std::endl;
-//    std::cout << "Account ID: " << std::flush;
-//    std::cin >> id;
-//    if (id == 0) {
-//        handler.transmitInt(ConnectSocket, id);
-//        return -1;
-//    }
-//    handler.transmitInt(ConnectSocket, id);
-//    int valid = handler.receiveInt(ServerSocket);
-//    if (valid == 0) {
-//        std::cout << "Invalid user ID." << std::endl;
-//        return -1;
-//    }
-//    std::cout << "Please enter your pin: " << std::endl;
-//    std::string pin;
-//    std::getline(std::cin, pin);
-//    std::getline(std::cin, pin);
-//    std::hash<int> hash;
-//    size_t hashed;
-//    hashed = hash(std::stoi(pin));
-//    const char* toSend = std::to_string(hashed).c_str();
-//    std::cout << pin << ", " << hashed << std::endl;
-//    handler.transmitInt(ConnectSocket, strlen(toSend));
-//    handler.transmitCharArray(ConnectSocket, toSend, strlen(toSend));
-//    valid = handler.receiveInt(ServerSocket);
-//    if (valid == 1) {
-//        std::cout << "Logged in!" << std::endl;
-//        return id;
-//    }
-//    else {
-//        std::cout << "Wrong pin." << std::endl;
-//        return -1;
-//    }
-//}
-//
-//double* receiveBalance(TCPHandler handler, SOCKET ServerSocket, seal::SEALContext context, seal::SecretKey secret_key) {
-//    double* bal = new double;
-//    try {
-//        const char* fileAddress = handler.receiveFile(ServerSocket);
-//        std::ifstream inFile(fileAddress, std::ios::binary);
-//        seal::Ciphertext c;
-//        seal::Plaintext p;
-//        seal::CKKSEncoder encoder(context);
-//        seal::Decryptor decryptor(context, secret_key);
-//        std::vector<double> balVec;
-//        c.load(context, inFile);
-//        decryptor.decrypt(c, p);
-//        encoder.decode(p, balVec);
-//        *bal = balVec[0];
-//    }
-//    catch (std::exception& e) {
-//        bal = nullptr;
-//        std::cout << e.what() << std::endl;
-//    }
-//    return bal;
-//}
-//
-//void loadCKKSParams(seal::EncryptionParameters& params, seal::PublicKey& public_key) {
-//    std::ifstream paramsFileIn("paramsCKKS.txt", std::ios::binary);
-//    params.load(paramsFileIn);
-//    paramsFileIn.close();
-//    seal::SEALContext context(params);
-//    std::ifstream pubFileIn("publicKeyCKKS.pem", std::ios::binary);
-//    public_key.load(context, pubFileIn);
-//    pubFileIn.close();
-//}
-//
-//bool clientTransferSequence(TCPHandler handler, SOCKET& ConnectSocket, SOCKET& ServerSocket, seal::SEALContext context, seal::PublicKey& public_key, int loggedId) {
-//    try {
-//        std::cout << "Input the ID of the account you wish to transfer to: " << std::endl;
-//        std::cout << "Account ID: " << std::flush;
-//        int id;
-//        std::string input;
-//        std::getline(std::cin, input);
-//        id = stoi(input);
-//        handler.transmitInt(ConnectSocket, id);
-//        if (handler.receiveInt(ServerSocket) != 0) {
-//            std::cout << "This account does not exist. Please try again." << std::endl;
-//        }
-//        else {
-//            std::ifstream inFile("privateKey.pem", std::ios::binary);
-//            seal::SecretKey secret_key;
-//            secret_key.load(context, inFile);
-//            inFile.close();
-//            seal::Decryptor decryptor(context, secret_key);
-//            seal::CKKSEncoder encoder(context);
-//            seal::Encryptor encryptor(context, public_key);
-//            seal::Plaintext p;
-//            seal::Ciphertext c;
-//            double amount;
-//            // Keep running dialogue until a valid amount is input.
-//            while (true) {
-//                std::cout << "Input the amount of money you would like to send. Send '0' if you want to go back." << std::endl;
-//                std::cout << "Amount: " << (char)156 << std::flush;
-//                std::string amountString;
-//                std::getline(std::cin, amountString);
-//                amount = stod(amountString);
-//                if (amount == 0.0) {
-//                    // Tell the server you intend to head back to the menu.
-//                    handler.transmitInt(ConnectSocket, 0);
-//                    //clientMenuSequence(handler, ConnectSocket, ServerSocket, context, public_key, loggedId);
-//                    return false;
-//                    break;
-//                }
-//                // Tell the server you're going to carry on with the process.
-//                handler.transmitInt(ConnectSocket, 1);
-//                int overdraft = handler.receiveInt(ServerSocket);
-//                double* bal;
-//                // Keep requesting balance until reading is successful. This ensures the most up to date version of one's balance possible is used for verification.
-//                while (true) {
-//                    try {
-//                        bal = receiveBalance(handler, ServerSocket, context, secret_key);
-//                        if (bal != nullptr) {
-//                            // Tell the server that everything is ok and the balance has been correctly received.
-//                            handler.transmitInt(ConnectSocket, 0);
-//                            break;
-//                        }
-//                        else {
-//                            // Tell the server there was an error and ask it to send again.
-//                            handler.transmitInt(ConnectSocket, 1);
-//                        }
-//                    }
-//                    catch (std::exception& e) {
-//                        std::cout << e.what() << std::endl;
-//                    }
-//                }
-//                // Validate the input of the user against the balance before sending.
-//                if (amount >= 0.01 && *bal - amount + overdraft >= 0.0) {
-//                    handler.transmitInt(ConnectSocket, 0);
-//                    break;
-//                }
-//                else {
-//                    std::cout << "Invalid amount. Please try again." << std::endl;
-//                    handler.transmitInt(ConnectSocket, 1);
-//                }
-//            }
-//            double scale = pow(2, 20);
-//            encoder.encode(amount, scale, p);
-//            encryptor.encrypt(p, c);
-//
-//            std::string fileName = std::to_string(loggedId) + "'" + std::to_string(id) + "'" + std::to_string(time(nullptr)) + ".txt";
-//            std::ofstream outFile(fileName, std::ios::binary);
-//            c.save(outFile);
-//            outFile.close();
-//            std::cout << fileName << " sending" << std::endl;
-//            handler.transmitFile(ConnectSocket, fileName);
-//            std::cout << fileName << " sent!" << std::endl;
-//            remove(fileName.c_str());
-//            std::cout << strerror(errno) << std::endl;
-//            int done = handler.receiveInt(ServerSocket);
-//            if (done == 0) {
-//                std::cout << "Successful transaction!" << std::endl;
-//                return true;
-//            }
-//            else {
-//                std::cout << "Transaction failed. Please try again." << std::endl;
-//                return false;
-//            }
-//        }
-//    }
-//    catch (std::exception& e) {
-//        std::cout << e.what() << std::endl;
-//        return false;
-//    }
-//}
-//
-//bool clientBalanceSequence(TCPHandler handler, SOCKET ConnectSocket, SOCKET ServerSocket, seal::SEALContext context) {
-//    try {
-//        const char* fileName = handler.receiveFile(ServerSocket);
-//        std::cout << fileName << std::endl;
-//        seal::SecretKey secret_key;
-//        std::ifstream inFile("privateKeyCKKS.pem", std::ios::binary);
-//        secret_key.load(context, inFile);
-//        inFile.close();
-//        std::ifstream inFile2(fileName, std::ios::binary);
-//        seal::Ciphertext c;
-//        c.load(context, inFile2);
-//        inFile2.close();
-//        seal::Decryptor decryptor(context, secret_key);
-//        seal::CKKSEncoder encoder(context);
-//        seal::Plaintext p;
-//        std::vector<double> ans;
-//        decryptor.decrypt(c, p);
-//        encoder.decode(p, ans);
-//        std::cout << "Your balance is : " << char(156) << std::fixed << std::setprecision(2) << ans[0] << std::endl;
-//        handler.transmitInt(ConnectSocket, 0);
-//        if (remove(fileName) != 0) {
-//            std::cout << strerror(errno) << std::endl;
-//        }
-//        return true;
-//    }
-//    catch (std::exception& e) {
-//        std::cout << e.what() << std::endl;
-//        std::cout << "Error when receiving balance. Trying again!" << std::endl;
-//        handler.transmitInt(ConnectSocket, 1);
-//        return clientBalanceSequence(handler, ConnectSocket, ServerSocket, context);
-//    }
-//}
-//
-//bool clientHistorySequence(TCPHandler handler, SOCKET ConnectSocket, SOCKET ServerSocket, seal::SEALContext context, int loggedId) {
-//    try {
-//        std::cout << "WIP" << std::endl;
-//        return true;
-//    }
-//    catch (std::exception& e) {
-//        std::cout << e.what() << std::endl;
-//        return clientHistorySequence(handler, ConnectSocket, ServerSocket, context, loggedId);
-//    }
-//}
-//
-//bool clientMenuSequence(TCPHandler handler, SOCKET ConnectSocket, SOCKET ServerSocket, seal::SEALContext context, seal::PublicKey public_key, int loggedId) {
-//    while (true) {
-//        try {
-//            std::cout << "1: Make a transfer.\n2: Check balance.\n3: Check transaction history.\n4: Add or remove direct debits.\n5: Log out." << std::endl;
-//            std::cout << "Choice: " << std::flush;
-//            int choice;
-//            std::string input;
-//            std::getline(std::cin, input);
-//            choice = stoi(input);
-//            if (choice > 0 && choice < 6) {
-//                handler.transmitInt(ConnectSocket, choice);
-//            }
-//            switch (choice) {
-//            case 1:
-//                clientTransferSequence(handler, ConnectSocket, ServerSocket, context, public_key, loggedId);
-//                break;
-//            case 2:
-//                clientBalanceSequence(handler, ConnectSocket, ServerSocket, context);
-//                break;
-//            case 3:
-//                clientHistorySequence(handler, ConnectSocket, ServerSocket, context, loggedId);
-//                break;
-//            case 4:
-//                break;
-//            case 5:
-//                std::cout << "Logging out..." << std::endl;
-//                return true;
-//            default:
-//                std::cout << "Invalid choice. Please try again." << std::endl;
-//                break;
-//            }
-//        }
-//        catch (std::exception& e) {
-//            std::cout << e.what() << std::endl;
-//        }
-//    }
-//}
-//
-//int __cdecl main(int argc, char** argv)
-//{
-//    try {
-//        seal::EncryptionParameters params;
-//        seal::PublicKey public_key;
-//        loadCKKSParams(params, public_key);
-//        seal::SEALContext context(params);
-//        while (true) {
-//            TCPHandler handler;
-//            SOCKET ConnectSocket = INVALID_SOCKET;
-//            SOCKET ListenSocket = INVALID_SOCKET;
-//            SOCKET ServerSocket = INVALID_SOCKET;
-//            handler.initiateSendConnection(DEFAULT_SEND_PORT, ConnectSocket);
-//            handler.initiateListenConnection(DEFAULT_RECEIVE_PORT, ServerSocket, ListenSocket);
-//            int id = clientLoginSequence(handler, ConnectSocket, ListenSocket, ServerSocket);
-//            if (id != -1) {
-//                //clientMenuSequence(handler, ConnectSocket, ServerSocket, context, public_key, id);
-//            }
-//            closesocket(ConnectSocket);
-//            closesocket(ListenSocket);
-//            closesocket(ServerSocket);
-//            if (id == -1) {
-//                return 0;
-//            }
-//        }
-//    }
-//    catch (std::exception& e) {
-//        std::cout << e.what() << std::endl;
-//        return 1;
-//    }
-//
-//    //TCPHandler handler;
-//    //SOCKET ConnectSocket = INVALID_SOCKET;
-//    //SOCKET ListenSocket = INVALID_SOCKET;
-//    //SOCKET ServerSocket = INVALID_SOCKET;
-//    //handler.initiateSendConnection(DEFAULT_SEND_PORT, ConnectSocket);
-//    //handler.initiateListenConnection(DEFAULT_RECEIVE_PORT, ServerSocket, ListenSocket);
-//    //handler.receiveFile(ServerSocket);
-//
-//
-//    //try {
-//    //    seal::EncryptionParameters params;
-//    //    seal::PublicKey public_key;
-//    //    loadCKKSParams(params, public_key);
-//    //    seal::SEALContext context(params);
-//    //    seal::SecretKey secret_key;
-//    //    std::ifstream inFile("privateKeyCKKS.pem", std::ios::binary);
-//    //    secret_key.load(context, inFile);
-//    //    inFile.close();
-//    //    std::ifstream inFile2("testCipher1.txt", std::ios::binary);
-//    //    seal::CKKSEncoder encoder(context);
-//    //    seal::Decryptor decryptor(context, secret_key);
-//    //    seal::Ciphertext c;
-//    //    c.load(context, inFile2);
-//    //    seal::Plaintext p;
-//    //    decryptor.decrypt(c, p);
-//    //    std::vector<double> ans;
-//    //    encoder.decode(p, ans);
-//    //    std::cout << ans[0] << std::endl;
-//    //}
-//    //catch (std::exception& e) {
-//    //    std::cout << e.what() << std::endl;
-//    //}
-//}
-
 #include <cpprest/http_client.h>
 #include <cpprest/filestream.h>
 #include <cpprest/uri.h>
@@ -330,20 +9,251 @@
 #include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
+#include <croncpp/croncpp.h>
 
 using namespace std;
 using namespace web;
 using namespace web::http;
 using namespace web::http::client;
+using namespace cron;
 
 using namespace concurrency::streams;
 
 static wstring loggedID = L"";
 
+#define KEY_LENGTH 2048 // Key length
+#define PUB_KEY_FILE "clientRSApub.pem" // public key path
+#define PRI_KEY_FILE "clientRSApri.pem" // private key path
+#define AES_BITS 256
+
+/* A 256 bit key */
+unsigned char* aesKey = new unsigned char[AES_BITS];
+
+/* A 128 bit IV */
+unsigned char* iv = new unsigned char[AES_BITS / 2];
+
+void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key)
+{
+    size_t pri_len = 0; // Private key length
+    size_t pub_len = 0; // public key length
+    char* pri_key = nullptr; // private key
+    char* pub_key = nullptr; // public key
+
+    // Generate key pair
+    RSA* keypair = RSA_generate_key(KEY_LENGTH, RSA_3, NULL, NULL);
+
+    BIO* pri = BIO_new(BIO_s_mem());
+    BIO* pub = BIO_new(BIO_s_mem());
+
+    // Generate private key
+    PEM_write_bio_RSAPrivateKey(pri, keypair, NULL, NULL, 0, NULL, NULL);
+    // Note------Generate the public key in the first format
+//PEM_write_bio_RSAPublicKey(pub, keypair);
+     // Note------Generate the public key in the second format (this is used in the code here)
+    PEM_write_bio_RSA_PUBKEY(pub, keypair);
+    // Get the length  
+    pri_len = BIO_pending(pri);
+    pub_len = BIO_pending(pub);
+
+    // The key pair reads the string  
+    pri_key = (char*)malloc(pri_len + 1);
+    pub_key = (char*)malloc(pub_len + 1);
+
+    BIO_read(pri, pri_key, pri_len);
+    BIO_read(pub, pub_key, pub_len);
+
+    pri_key[pri_len] = '\0';
+    pub_key[pub_len] = '\0';
+
+    out_pub_key = pub_key;
+    out_pri_key = pri_key;
+
+    // Write the public key to the file
+    std::ofstream pub_file(PUB_KEY_FILE, std::ios::out);
+    if (!pub_file.is_open())
+    {
+        perror("pub key file open fail:");
+        return;
+    }
+    pub_file << pub_key;
+    pub_file.close();
+
+    // write private key to file
+    std::ofstream pri_file(PRI_KEY_FILE, std::ios::out);
+    if (!pri_file.is_open())
+    {
+        perror("pri key file open fail:");
+        return;
+    }
+    pri_file << pri_key;
+    pri_file.close();
+
+    // release memory
+    RSA_free(keypair);
+    BIO_free_all(pub);
+    BIO_free_all(pri);
+
+    free(pri_key);
+    free(pub_key);
+}
+
+std::string RsaPriEncrypt(const std::string& clear_text, std::string& pri_key)
+{
+    std::string encrypt_text;
+    BIO* keybio = BIO_new_mem_buf((unsigned char*)pri_key.c_str(), -1);
+    RSA* rsa = RSA_new();
+    rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, NULL, NULL);
+    if (!rsa)
+    {
+        BIO_free_all(keybio);
+        return std::string("");
+    }
+
+    // Get the maximum length of data that RSA can process at a time
+    int len = RSA_size(rsa);
+
+    // Apply for memory: store encrypted ciphertext data
+    char* text = new char[len + 1];
+    memset(text, 0, len + 1);
+
+    // Encrypt the data with a private key (the return value is the length of the encrypted data)
+    int ret = RSA_private_encrypt(clear_text.length(), (const unsigned char*)clear_text.c_str(), (unsigned char*)text, rsa, RSA_PKCS1_PADDING);
+    if (ret >= 0) {
+        encrypt_text = std::string(text, ret);
+    }
+
+    // release memory  
+    delete[] text;
+    BIO_free_all(keybio);
+    RSA_free(rsa);
+
+    return encrypt_text;
+}
+
+std::string RsaPubDecrypt(const std::string& cipher_text, const std::string& pub_key)
+{
+    std::string decrypt_text;
+    BIO* keybio = BIO_new_mem_buf((unsigned char*)pub_key.c_str(), -1);
+    RSA* rsa = RSA_new();
+
+    // Note--------Use the public key in the first format for decryption
+   //rsa = PEM_read_bio_RSAPublicKey(keybio, &rsa, NULL, NULL);
+    // Note--------Use the public key in the second format for decryption (we use this format as an example)
+    rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
+    if (!rsa)
+    {
+        unsigned long err = ERR_get_error(); //Get the error number
+        char err_msg[1024] = { 0 };
+        ERR_error_string(err, err_msg); // Format: error:errId: library: function: reason
+        cout << "err msg: err:" << err << ", msg:" << err_msg << endl;
+        BIO_free_all(keybio);
+        return decrypt_text;
+    }
+
+    int len = RSA_size(rsa);
+    char* text = new char[len + 1];
+    memset(text, 0, len + 1);
+    // Decrypt the ciphertext
+    int ret = RSA_public_decrypt(cipher_text.length(), (const unsigned char*)cipher_text.c_str(), (unsigned char*)text, rsa, RSA_PKCS1_PADDING);
+    if (ret >= 0) {
+        decrypt_text.append(std::string(text, ret));
+    }
+
+    // release memory  
+    delete[] text;
+    BIO_free_all(keybio);
+    RSA_free(rsa);
+
+    return decrypt_text;
+}
+
+
+std::string RsaPubEncrypt(const std::string& clear_text, const std::string& pub_key)
+{
+    std::string encrypt_text;
+    BIO* keybio = BIO_new_mem_buf((unsigned char*)pub_key.c_str(), -1);
+    RSA* rsa = RSA_new();
+    // Note the public key in the first format
+   //rsa = PEM_read_bio_RSAPublicKey(keybio, &rsa, NULL, NULL);
+    // Note the public key in the second format (here we take the second format as an example)
+    rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
+
+    // Get the maximum length of the data block that RSA can process at a time
+    int key_len = RSA_size(rsa);
+    int block_len = key_len - 11; // Because the filling method is RSA_PKCS1_PADDING, so you need to subtract 11 from the key_len
+
+    // Apply for memory: store encrypted ciphertext data
+    char* sub_text = new char[key_len + 1];
+    memset(sub_text, 0, key_len + 1);
+    int ret = 0;
+    int pos = 0;
+    std::string sub_str;
+    // Encrypt the data in segments (the return value is the length of the encrypted data)
+    while (pos < clear_text.length()) {
+        sub_str = clear_text.substr(pos, block_len);
+        memset(sub_text, 0, key_len + 1);
+        ret = RSA_public_encrypt(sub_str.length(), (const unsigned char*)sub_str.c_str(), (unsigned char*)sub_text, rsa, RSA_PKCS1_PADDING);
+        if (ret >= 0) {
+            encrypt_text.append(std::string(sub_text, ret));
+        }
+        pos += block_len;
+    }
+
+    // release memory  
+    BIO_free_all(keybio);
+    RSA_free(rsa);
+    delete[] sub_text;
+
+    return encrypt_text;
+}
+
+
+std::string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
+{
+    std::string decrypt_text;
+    RSA* rsa = RSA_new();
+    BIO* keybio;
+    keybio = BIO_new_mem_buf((unsigned char*)pri_key.c_str(), -1);
+
+    rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, NULL, NULL);
+    if (rsa == nullptr) {
+        unsigned long err = ERR_get_error(); //Get the error number
+        char err_msg[1024] = { 0 };
+        ERR_error_string(err, err_msg); // Format: error:errId: library: function: reason
+        cout << "err msg: err:" << err << ", msg:" << err_msg << endl;
+        return std::string();
+    }
+
+    // Get the maximum length of RSA single processing
+    int key_len = RSA_size(rsa);
+    char* sub_text = new char[key_len + 1];
+    memset(sub_text, 0, key_len + 1);
+    int ret = 0;
+    std::string sub_str;
+    int pos = 0;
+    // Decrypt the ciphertext in segments
+    while (pos < cipher_text.length()) {
+        sub_str = cipher_text.substr(pos, key_len);
+        memset(sub_text, 0, key_len + 1);
+        ret = RSA_private_decrypt(sub_str.length(), (const unsigned char*)sub_str.c_str(), (unsigned char*)sub_text, rsa, RSA_PKCS1_PADDING);
+        if (ret >= 0) {
+            decrypt_text.append(std::string(sub_text, ret));
+            pos += key_len;
+        }
+    }
+    // release memory  
+    delete[] sub_text;
+    BIO_free_all(keybio);
+    RSA_free(rsa);
+
+    return decrypt_text;
+}
+
 void handleErrors(void)
 {
     ERR_print_errors_fp(stderr);
-    abort();
 }
 
 int encrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key,
@@ -436,52 +346,95 @@ int decrypt(unsigned char* ciphertext, int ciphertext_len, unsigned char* key,
     return plaintext_len;
 }
 
-web::http::status_code getFile(std::wstring endpoint, std::wstring fileName) {
-    http_client client(endpoint);
-    auto response = client.request(methods::GET, fileName).get();
-    if (response.status_code() == status_codes::OK) {
-        string result;
-        auto buf = response.body().streambuf();
-        while (!buf.is_eof()) {
-            result += buf.sbumpc();
+wstring aesEncrypt(string input) {
+    unsigned char* plaintext = new unsigned char[input.length() * 16];
+    unsigned char* ciphertext = new unsigned char[input.length() * 16];
+    plaintext = reinterpret_cast<unsigned char*>(const_cast<char*>(input.c_str()));
+    int ciphertext_len;
+    ciphertext_len = encrypt(plaintext, input.length(), aesKey, iv, ciphertext);
+    wstring toSend = L"";
+    toSend += to_wstring(ciphertext_len) + L",";
+    for (int i = 0; i < ciphertext_len; ++i) {
+        toSend += to_wstring((int)ciphertext[i]) + L",";
+    }
+    wcout << "Encrypted message sent: " << toSend << endl;
+    return toSend;
+}
+
+string aesDecrypt(wstring input) {
+    int index = input.find_first_of(L",");
+    int ciphertext_len = stoi(input.substr(0, index));
+    cout << "Length: " << ciphertext_len << endl;
+    wstring body = input.substr(index + 1, input.length());
+    wcout << body << endl;
+    unsigned char* ciphertext = new unsigned char[ciphertext_len];
+    unsigned char* plaintext = new unsigned char[ciphertext_len];
+    for (int i = 0; i < ciphertext_len; ++i) {
+        index = body.find_first_of(L",");
+        int toAdd = stoi(body.substr(0, index));
+        body = body.substr(index + 1, body.length());
+        ciphertext[i] = (unsigned char)toAdd;
+    }
+    int plaintext_len = decrypt(ciphertext, ciphertext_len, aesKey, iv, plaintext);
+    string final = "";
+    for (int i = 0; i < plaintext_len; ++i) {
+        final += (char)((int)plaintext[i]);
+    }
+    return final;
+}
+
+web::http::status_code getKeys(string pubKey, string priKey, unsigned char* aesKey, unsigned char* iv) {
+    try {
+        http_client client(L"http://localhost:8080/requestkey");
+        wstring toSend = L"";
+        for (int i = 0; i < pubKey.length(); ++i) {
+            int converted = (int)pubKey.at(i);
+            toSend += to_wstring(converted) + L",";
         }
-        std::ofstream outFile(fileName);
-        outFile << result;
-    }
-    return response.status_code();
-}
+        wcout << toSend << endl;
+        auto response = client.request(methods::POST, to_wstring(pubKey.length()), toSend).get();
+        string ciphertext = response.extract_utf8string().get();
+        //cout << ciphertext << "\n" << endl;
+        string extracted_key = RsaPriDecrypt(ciphertext, priKey);
+        //cout << endl;
+        //cout << extracted_key << endl;
+        string finalString = "";
+        for (int i = 0; i < AES_BITS; ++i) {
+            int index = extracted_key.find_first_of(",");
+            int toAdd = stoi(extracted_key.substr(0, index));
+            extracted_key = extracted_key.substr(index + 1, extracted_key.length());
+            aesKey[i] = (unsigned char)toAdd;
+        }
+        extracted_key = extracted_key.substr(1, extracted_key.length());
+        for (int i = 0; i < AES_BITS / 2; ++i) {
+            int index = extracted_key.find_first_of(",");
+            int toAdd = stoi(extracted_key.substr(0, index));
+            extracted_key = extracted_key.substr(index + 1, extracted_key.length());
+            iv[i] = (unsigned char)toAdd;
+        }
+        cout << "AES Key: " << endl;
+        for (int i = 0; i < AES_BITS; ++i) {
+            cout << (int)aesKey[i];
+        }
+        cout << endl;
+        for (int i = 0; i < AES_BITS / 2; ++i) {
+            cout << (int)iv[i];
+        }
+        cout << endl;
 
-web::http::status_code putFile(std::wstring endpoint, std::wstring fileName) {
-    if (!filesystem::exists(fileName)) {
-        return status_codes::BadRequest;
+        cout << "Done" << endl;
+        return response.status_code();
     }
-    auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
-    http_client client(endpoint);
-    auto response = client.request(methods::PUT, fileName, f.streambuf()).get();
-    f.close();
-    return response.status_code();
-}
-
-web::http::status_code postFile(std::wstring endpoint, std::wstring fileName) {
-    if (!filesystem::exists(fileName)) {
-        return status_codes::BadRequest;
+    catch (exception& e) {
+        cout << e.what() << endl;
     }
-    auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
-    http_client client(endpoint);
-    auto response = client.request(methods::POST, fileName, f.streambuf()).get();
-    f.close();
-    return response.status_code();
-}
-
-web::http::status_code delFile(std::wstring endpoint, std::wstring fileName) {
-    http_client client(endpoint);
-    auto response = client.request(methods::DEL, fileName).get();
-    return response.status_code();
 }
 
 web::http::status_code sendLogin(wstring id, wstring pin) {
     http_client client(L"http://localhost:8080/login");
+    cout << "Sending..." << endl;
     auto response = client.request(methods::PUT, id, pin).get();
+    cout << response.status_code() << endl;
     if (response.status_code() == status_codes::OK) {
         loggedID = id;
         cout << "Logged in!" << endl;
@@ -491,10 +444,6 @@ web::http::status_code sendLogin(wstring id, wstring pin) {
     }
     else if (response.status_code() == status_codes::NotAcceptable) {
         cout << "Invalid pin." << endl;
-    }
-    else if (response.status_code() == status_codes::Forbidden) {
-        cout << "You have entered your pin wrong too many times!" << endl;
-        exit(1);
     }
     else if (response.status_code() == status_codes::Conflict) {
         cout << "Someone else is logged in right now!" << endl;
@@ -506,17 +455,20 @@ web::http::status_code sendLogin(wstring id, wstring pin) {
     return response.status_code();
 }
 
-// TO-DO: Add logged in account number to request
 status_code sendTransfer() {
-    wstring accountId;
-    wstring amount;
+    string accountId;
+    string amount;
     cout << "Which account would you like to send to?" << endl;
-    getline(wcin, accountId);
+    getline(cin, accountId);
     cout << "How much would you like to send?" << endl;
     cout << "Amount: " << (char)156 << flush;
-    getline(wcin, amount);
+    getline(cin, amount);
+    string accFrom = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
+    string toEncrypt = accFrom + "," + accountId;
+    wstring ids = aesEncrypt(toEncrypt);
+    wstring amountToSend = aesEncrypt(amount);
     http_client client(L"http://localhost:8080/transfer");
-    auto response = client.request(methods::POST, loggedID+L","+accountId, amount).get();
+    auto response = client.request(methods::POST, ids, amountToSend).get();
     if (response.status_code() == status_codes::OK) {
         cout << "Transfer successful!" << endl;
     }
@@ -536,131 +488,259 @@ status_code sendTransfer() {
 }
 
 status_code checkBalance() {
-    http_client client(L"http://localhost:8080/transfer");
-    auto response = client.request(methods::GET, loggedID);
-    double balance = stod(response.get().extract_utf16string().get());
-    cout << "Balance: " << (char)156 << setprecision(2) << fixed << balance << endl << endl;
-    return response.get().status_code();
+    try {
+        http_client client(L"http://localhost:8080/transfer");
+        string toEnc = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
+        wstring toSend = aesEncrypt(toEnc);
+        auto response = client.request(methods::GET, toSend).get();
+        if (response.status_code() == status_codes::OK) {
+            cout << status_codes::OK << endl;
+            wstring body = response.extract_utf16string().get();
+            double balance = stod(aesDecrypt(body));
+            cout << "Balance: " << (char)156 << setprecision(2) << fixed << balance << endl << endl;
+        }
+        else {
+            cout << response.status_code() << endl;
+        }
+        return response.status_code();
+    }
+    catch (exception& e) {
+        cout << e.what() << endl;
+    }
 }
 
 status_code checkHistory() {
-    return status_codes::OK;
     http_client client(L"http://localhost:8080/history");
-    auto response = client.request(methods::GET, loggedID);
-
-}
-
-status_code debitMenu() {
-    return status_codes::OK;
-}
-
-status_code sendLogout() {
-    http_client client(L"http://localhost:8080/login");
-    auto response = client.request(methods::DEL, loggedID).get();
+    string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
+    wstring toSend = aesEncrypt(toEncrypt);
+    auto response = client.request(methods::GET, toSend).get();
     if (response.status_code() == status_codes::OK) {
-        cout << "Logged out!" << endl;
+        cout << status_codes::OK << endl;
+        wstring body = response.extract_utf16string().get();
+        string history = aesDecrypt(body);
+        cout << history << endl;
+    }
+    else {
+        cout << response.status_code() << endl;
     }
     return response.status_code();
 }
 
-void aesTest() {
-    /*
- * Set up the key and iv. Do I need to say to not hard code these in a
- * real application? :-)
- */
+status_code addDebit() {
+    http_client client(L"http://localhost:8080/debits");
+    try {
+        std::string idTo;
+        int intIdTo;
+        wstring id;
+        while (true) {
+            std::cout << "Enter the id of the account you want to transfer to." << std::endl;
+            std::getline(std::cin, idTo);
+            intIdTo = stoi(idTo);
+            id = to_wstring(intIdTo);
+            break;
+        }
+        std::string choice;
+        std::string regString;
+        while (true) {
+            std::cout << "Please enter the regularity of the payment:" << std::endl;
+            std::cout << "1: Once a minute" << std::endl;
+            std::cout << "2: Once an hour" << std::endl;
+            std::cout << "3: Once a day" << std::endl;
+            std::cout << "4: Once a week" << std::endl;
+            std::cout << "5: On the first day of every month" << std::endl;
+            std::cout << "6: Once a year" << std::endl;
+            std::getline(std::cin, choice);
+            if (choice == "1") {
+                regString = "0 * * * * ?";
+                break;
+            }
+            else if (choice == "2") {
+                regString = "0 0 * * * ?";
+                break;
+            }
+            else if (choice == "3") {
+                regString = "0 0 0 * * ?";
+                break;
+            }
+            else if (choice == "4") {
+                regString = "0 0 0 * * 1";
+                break;
+            }
+            else if (choice == "5") {
+                regString = "0 0 0 1 * *";
+                break;
+            }
+            else if (choice == "6") {
+                regString = "0 0 0 1 1 ?";
+                break;
+            }
+            else {
+                std::cout << "Invalid choice. Please try again." << std::endl;
+            }
+        }
+        wstring regularity = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(regString);
+        double amount = 0;
+        std::wstring amountString;
+        while (amount <= 0) {
+            std::cout << "Enter the amount you wish to transfer: " << std::endl;
+            std::cout << "Amount: " << (char)156 << std::flush;
+            getline(std::wcin, amountString);
+            amount = stod(amountString);
+        }
+        wstring collection = id + L"," + regularity + L"," + amountString;
+        wstring toSend = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(collection));
+        wstring encId = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID));
+        auto response = client.request(methods::POST, encId, toSend);
+        cout << response.get().status_code() << endl;
+    }
+    catch (std::exception& e) {
+        std::cout << "Something went wrong!" << std::endl;
+        std::cout << e.what() << std::endl;
+    }
+    return status_codes::OK;
+}
 
-  /* A 256 bit key */
- unsigned char* key = (unsigned char*)"01234567890123456789012345678901";
+void viewDebits() {
+    http_client client(L"http://localhost:8080/debits");
+    string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
+    wstring toSend = aesEncrypt(toEncrypt);
+    auto response = client.request(methods::GET, toSend);
+    wstring body = response.get().extract_utf16string().get();
+    string details = aesDecrypt(body);
+    cout << details << endl;
+}
 
- /* A 128 bit IV */
- unsigned char* iv = (unsigned char*)"0123456789012345";
+void removeDebit() {
+    cout << "Which debit ID would you like to remove?" << endl;
+    string input = "";
+    getline(cin, input);
+    http_client client(L"http://localhost:8080/debits");
+    wstring toSend = aesEncrypt(input);
+    wstring idToSend = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID));
+    auto response = client.request(methods::DEL, idToSend, toSend).get();
+    cout << response.status_code() << endl;
+}
 
- /* Message to be encrypted */
- unsigned char * plaintext = new unsigned char[128];
- string p;
- cout << "Enter the message you wish to send." << endl;
- getline(cin, p);
- plaintext = reinterpret_cast<unsigned char*>(const_cast<char*>(p.c_str()));
- unsigned char ciphertext[128];
- int ciphertext_len, plaintext_len;
- plaintext_len = p.length();
- /* Encrypt the plaintext */
- ciphertext_len = encrypt(plaintext, strlen((char*)plaintext), key, iv,
-     ciphertext);
+status_code debitMenu() {
+    while (true) {
+        cout << "Select the option you would like to perform." << endl;
+        cout << "1: Add a direct debit \n2: View direct debits on this account \n3: Remove a direct debit\n4: Go back to the previous menu" << endl;
+        string choice = "0";
+        getline(cin, choice);
+        if (choice.compare("1") == 0) {
+            addDebit();
+            return status_codes::OK;
+        }
+        else if (choice.compare("2") == 0) {
+            viewDebits();
+        }
+        else if (choice.compare("3") == 0) {
+            removeDebit();
+            return status_codes::OK;
+        }
+        else if (choice.compare("4") == 0) {
+            return status_codes::OK;
+        }
+        else {
+            cout << "Invalid choice. Please try again" << endl;
+        }
+    }
+}
 
- http_client client(L"http://localhost:8080/test");
- string s = reinterpret_cast<const char*>(ciphertext);
- try {
-     std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
-     wstring s1 = L"";
-     for (int i = 0; i < s.length(); ++i) {
-         s1.push_back(btowc(s.c_str()[i]));
-     }
-     wcout << "Ciphertext to send: " << s1 << endl;
-     cout << "Plaintext expected: " << plaintext << endl;
-     wstring fragment = to_wstring(plaintext_len) + L"," + to_wstring(ciphertext_len);
-     wcout << fragment << endl;
-     auto response = client.request(methods::PUT, to_wstring(plaintext_len)+L","+to_wstring(ciphertext_len), s1).get();
-     cout << response.status_code() << endl;
- }
- catch (exception& e) {
-     cout << e.what() << endl;
- }
+status_code sendLogout() {
+    http_client client(L"http://localhost:8080/login");
+    string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
+    wstring toSend = aesEncrypt(toEncrypt);
+    auto response = client.request(methods::DEL, toSend).get();
+    if (response.status_code() == status_codes::OK) {
+        cout << "Logged out!" << endl;
+    }
+    else {
+        cout << "Something went wrong!" << endl;
+    }
+    return response.status_code();
 }
 
 int main()
 {
-    while (true) {
-        status_code code;
-        do {
-            cout << "Enter your account id." << endl;
-            wstring id;
-            string pin;
-            cout << "id: " << flush;
-            getline(wcin, id);
-            cout << "pin: " << flush;
-            getline(cin, pin);
-            std::hash<int> hash;
-            size_t hashed;
-            hashed = hash(std::stoi(pin));
-            pin = to_string(hashed);
-            cout << hashed << endl;
-            wstring pinToSend = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(pin);
-            wcout << pinToSend << endl;
-            code = sendLogin(id, pinToSend);
-            if (code == status_codes::OK) {
-                loggedID = id;
-            }
-        } while (code != status_codes::OK);
-        int in = 0;
-        do {
-            cout << "What do you want to do?" << endl;
-            std::cout << "1: Make a transfer.\n2: Check balance.\n3: Check transaction history.\n4: Add or remove direct debits.\n5: Log out." << std::endl;
-            std::cout << "Choice: " << std::flush;
-            std::string input;
-            std::getline(std::cin, input);
-            in = stoi(input);
-            switch (in) {
-            case 1:
-                sendTransfer();
-                break;
-            case 2:
-                checkBalance();
-                break;
-            case 3:
-                checkHistory();
-                break;
-            case 4:
-                debitMenu();
-                break;
-            case 5:
-                std::cout << "Logging out..." << std::endl;
-                sendLogout();
-                return true;
-            default:
-                std::cout << "Invalid choice. Please try again." << std::endl;
-                break;
-            }
-        } while (in != 5);
+    try {
+        string pub_key;
+        string priv_key;
+        while (true) {
+            GenerateRSAKey(pub_key, priv_key);
+            cout << priv_key << endl;
+            cout << pub_key << endl;
+            getKeys(pub_key, priv_key, aesKey, iv);
+            status_code code;
+            do {
+                cout << "Enter your account id." << endl;
+                string id;
+                string pin;
+                cout << "id: " << flush;
+                getline(cin, id);
+                cout << "pin: " << flush;
+                getline(cin, pin);
+                std::hash<int> hash;
+                size_t hashed;
+                int pinNum = 0;
+                try {
+                    pinNum = stoi(pin);
+                }
+                catch (exception& e) {
+                    cout << "Invalid pin!" << endl;
+                }
+                if (pinNum != 0) {
+                    hashed = hash(std::stoi(pin));
+                    pin = to_string(hashed);
+                    cout << hashed << endl;
+                    wstring idToSend = aesEncrypt(id);
+                    wstring pinToSend = aesEncrypt(pin);
+                    code = sendLogin(idToSend, pinToSend);
+                    if (code == status_codes::OK) {
+                        loggedID = wstring_convert < codecvt_utf8<wchar_t>>().from_bytes(id);
+                    }
+                }
+            } while (code != status_codes::OK);
+            int in = 0;
+            do {
+                cout << "What do you want to do?" << endl;
+                std::cout << "1: Make a transfer.\n2: Check balance.\n3: Check transaction history.\n4: Add or remove direct debits.\n5: Log out." << std::endl;
+                std::cout << "Choice: " << std::flush;
+                std::string input;
+                std::getline(std::cin, input);
+                try {
+                    in = stoi(input);
+                }
+                catch (exception& e) {
+                    cout << "Please enter a number when trying to perform actions." << endl;
+                }
+                switch (in) {
+                case 1:
+                    sendTransfer();
+                    break;
+                case 2:
+                    checkBalance();
+                    break;
+                case 3:
+                    checkHistory();
+                    break;
+                case 4:
+                    debitMenu();
+                    break;
+                case 5:
+                    std::cout << "Logging out..." << std::endl;
+                    sendLogout();
+                    break;
+                default:
+                    std::cout << "Invalid choice. Please try again." << std::endl;
+                    break;
+                }
+            } while (in != 5);
+        }
     }
+    catch (exception& e) {
+        cout << e.what() << endl;
+    }
+    delete[] aesKey;
+    delete[] iv;
 }

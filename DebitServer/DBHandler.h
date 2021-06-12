@@ -19,7 +19,7 @@ private:
 public:
 	DBHandler(TransactionHandler* tran);
 
-	bool logTransaction(Account* from, Account* to, time_t nowTime, int transactionID);
+	bool logTransaction(Account* from, Account* to, time_t nowTime);
 
 	bool connectToDB();
 
@@ -54,6 +54,4 @@ public:
 	void removeDebit(int id);
 
 	void addInterestTransaction(Account* account, seal::SEALContext context, seal::EncryptionParameters params, seal::PublicKey publicKey, time_t nowTime);
-
-	int getTransactionID();
 };

@@ -14,12 +14,12 @@ DBHandler::DBHandler(TransactionHandler* tran)
 	this->debits = nullptr;
 }
 
-bool DBHandler::logTransaction(Account* from, Account* to, time_t nowTime, int transactionID)
+bool DBHandler::logTransaction(Account* from, Account* to, time_t nowTime)
 {
 	session->startTransaction();
 	try {
-		std::string transactionAddressFrom = std::to_string(from->getId()) + "'" + std::to_string(to->getId()) + "'" + std::to_string(transactionID) + ".txt";
-		std::string transactionAddressTo = std::to_string(to->getId()) + "'" + std::to_string(from->getId()) + "'" + std::to_string(transactionID) + ".txt";
+		std::string transactionAddressFrom = std::to_string(from->getId()) + "'" + std::to_string(to->getId()) + "'" + std::to_string(nowTime) + ".txt";
+		std::string transactionAddressTo = std::to_string(to->getId()) + "'" + std::to_string(from->getId()) + "'" + std::to_string(nowTime) + ".txt";
 		transactions->insert("transactionTime", "transactionType", "amount", "transactionOwnerID", "otherAccountID").values(nowTime, "debit", transactionAddressFrom, from->getId(), to->getId()).execute();
 		transactions->insert("transactionTime", "transactionType", "amount", "transactionOwnerID", "otherAccountID").values(nowTime, "credit", transactionAddressTo, to->getId(), from->getId()).execute();
 		session->commit();
@@ -248,39 +248,15 @@ void DBHandler::removeDebit(int id) {
 	}
 }
 
-void DBHandler::addInterestTransaction(Account* account, seal::SEALContext context, seal::EncryptionParameters params, seal::PublicKey publicKey, time_t nowTime) {
+void DBHandler::addInterestTransaction(Account* account, seal::SEALContext context, seal::EncryptionParameters params, time_t nowTime) {
 	try {
 		session->startTransaction();
 		std::string outputAddress = std::to_string(1) + "'" + std::to_string(account->getId()) + "'" + std::to_string(nowTime) + ".txt";
-		std::ofstream output(outputAddress, std::ios::binary);
 		transactions->insert("transactionTime", "transactionType", "amount", "transactionOwnerID", "otherAccountID").values(nowTime, "Monthly interest", outputAddress, account->getId(), 1).execute();
 		session->commit();
 	}
 	catch (std::exception& e) {
 		std::cout << e.what() << std::endl;
 		session->rollback();
-	}
-}
-
-int DBHandler::getTransactionID() {
-
-	try {
-		auto trans = transactions->select("transactionID").execute();
-		if (trans.count() > 0) {
-			int max = 0;
-			for (Row r : trans) {
-				int comp = r.get(0);
-				if (max < comp) {
-					max = comp;
-				}
-			}
-			return max;
-		}
-		else {
-			return 1;
-		}
-	}
-	catch (std::exception& e) {
-		std::cout << e.what() << std::endl;
 	}
 }

@@ -3,21 +3,25 @@
 TransactionList::TransactionList(){}
 
 bool TransactionList::addTransaction(Transaction* toAdd) {
-	if (transactions.find(toAdd) != transactions.end()) {
-		return false;
+	for (int i = 0; i < transactions.size(); ++i) {
+		if (transactions.at(i) == toAdd) {
+			return false;
+		}
 	}
-	transactions.insert(toAdd);
+	transactions.push_back(toAdd);
 	return true;
 }
 
 bool TransactionList::removeTransaction(Transaction* toRemove) {
-	if (transactions.find(toRemove) != transactions.end()) {
-		transactions.erase(toRemove);
-		return true;
+	for (int i = 0; i < transactions.size(); ++i) {
+		if (transactions.at(i) == toRemove) {
+			transactions.erase(transactions.begin() + i);
+			return true;
+		}
 	}
 	return false;
 }
 
-std::set<Transaction*> TransactionList::getTransactions() {
+std::vector<Transaction*> TransactionList::getTransactions() {
 	return transactions;
 }

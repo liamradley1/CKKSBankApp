@@ -14,12 +14,12 @@ DBHandler::DBHandler(TransactionHandler* tran)
 	this->debits = nullptr;
 }
 
-bool DBHandler::logTransaction(Account* from, Account* to, time_t nowTime, int transactionID)
+bool DBHandler::logTransaction(Account* from, Account* to, time_t nowTime)
 {
 	session->startTransaction();
 	try {
-		std::string transactionAddressFrom = std::to_string(from->getId()) + "'" + std::to_string(to->getId()) + "'" + std::to_string(transactionID) + ".txt";
-		std::string transactionAddressTo = std::to_string(to->getId()) + "'" + std::to_string(from->getId()) + "'" + std::to_string(transactionID) + ".txt";
+		std::string transactionAddressFrom = std::to_string(from->getId()) + "'" + std::to_string(to->getId()) + "'" + std::to_string(nowTime) + ".txt";
+		std::string transactionAddressTo = std::to_string(to->getId()) + "'" + std::to_string(from->getId()) + "'" + std::to_string(nowTime) + ".txt";
 		transactions->insert("transactionTime", "transactionType", "amount", "transactionOwnerID", "otherAccountID").values(nowTime, "debit", transactionAddressFrom, from->getId(), to->getId()).execute();
 		transactions->insert("transactionTime", "transactionType", "amount", "transactionOwnerID", "otherAccountID").values(nowTime, "credit", transactionAddressTo, to->getId(), from->getId()).execute();
 		session->commit();
@@ -116,9 +116,9 @@ TransactionList* DBHandler::getTransactions(int accountId, seal::SEALContext con
 	else {
 		for (Row row : tra) {
 			int otherAccountId = (int)row.get(5);
-			Account* account = getAccount(accountId, context);
+			Account* currentAccount = getAccount(accountId, context);
 			Account* otherAccount = getAccount(otherAccountId, context);
-			Transaction* temp = new Transaction((std::string)row.get(3), account, otherAccount, (std::string)row.get(2), (std::time_t)row.get(1));
+			Transaction* temp = new Transaction((std::string)row.get(3), currentAccount, otherAccount, (std::string)row.get(2), (std::time_t)row.get(1));
 			tran->getTransactions()->addTransaction(temp);
 		}
 		return tran->getTransactions();
@@ -259,28 +259,5 @@ void DBHandler::addInterestTransaction(Account* account, seal::SEALContext conte
 	catch (std::exception& e) {
 		std::cout << e.what() << std::endl;
 		session->rollback();
-	}
-}
-
-int DBHandler::getTransactionID() {
-
-	try {
-		auto trans = transactions->select("transactionID").execute();
-		if (trans.count() > 0) {
-			int max = 0;
-			for (Row r : trans) {
-				int comp = r.get(0);
-				if (max < comp) {
-					max = comp;
-				}
-			}
-			return max;
-		}
-		else {
-			return 1;
-		}
-	}
-	catch (std::exception& e) {
-		std::cout << e.what() << std::endl;
 	}
 }

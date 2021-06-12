@@ -30,7 +30,7 @@ balanceAddress,
 keyAddress, 
 overdraft, 
 pin)
-values ('Liam', 'Radley', 'testCipher1.txt', 'privateKeyCKKS.pem', 1000, 7359067979067344955);
+values ('Liam', 'Radley', 'testCipher1.txt', 'privateKeyCKKS2.pem', 1000, 7359067979067344955);
 
 insert into accounts(
 firstName,
@@ -63,6 +63,7 @@ foreign key (transactionOwnerID) references accounts(id),
 foreign key (otherAccountID) references accounts(id)
 );
 
+use bankDB;
 select * from accounts;
 select * from transactions;
 select * from direct_debits;

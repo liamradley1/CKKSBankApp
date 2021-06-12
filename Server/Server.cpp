@@ -1,363 +1,3 @@
-//#include <seal/seal.h>
-//#include "TCPHandler.h"
-//#include "UserHandler.h"
-//#include "DBHandler.h"
-//#include "LoginHandler.h"
-//#include "TransactionHandler.h"
-//#include "TransactionList.h"
-//
-//
-//void processDebits(DBHandler* dat, TransactionHandler* tran, DirectDebit* d, seal::PublicKey public_key, seal::SEALContext context, seal::EncryptionParameters params) {
-//    if (!dat->directDebit(d, public_key, context, params)) {
-//        std::cout << "Not enough money to run this direct debit." << std::endl;
-//        std::cout << "Deleting this direct debit." << std::endl;
-//        tran->getDebitList()->removeDebit(d);
-//        delete(d);
-//    }
-//    else {
-//        d->setNewTime(cron::cron_next(d->getRegularity(), time(nullptr)));
-//    }
-//}
-//
-//void runInterestSubroutine(DBHandler* dat, seal::SEALContext context, seal::EncryptionParameters params, seal::PublicKey publicKey) {
-//    std::string regString = "0 0 0 1 * *"; // set to run monthly
-//    cron::cronexpr monthly = cron::make_cron(regString);
-//    time_t now = time(nullptr);
-//    time_t nextExec = cron::cron_next(monthly, now);
-//    while (true) {
-//        now = time(nullptr);
-//        if (nextExec <= now) {
-//            std::vector<Account*> accounts = dat->getAccounts(context);
-//            if (accounts.size() > 0) {
-//                for (Account* acc : accounts) {
-//                    if (acc->getId() == 1) {
-//                        continue;
-//                    }
-//                    dat->addInterestTransaction(acc, context, params, publicKey);
-//                }
-//            }
-//            nextExec = cron::cron_next(monthly, now);
-//        }
-//        _sleep(991);
-//    }
-//}
-//
-////void runDebitSubroutine(DBHandler* dat, TransactionHandler* tran, UserHandler* user, seal::PublicKey public_key, seal::SEALContext context, seal::EncryptionParameters params) {
-////    try {
-////        user->refreshDebits(context);
-////        if (tran->getDebits().size() == 0) {
-////        }
-////        else {
-////            for (DirectDebit* d : tran->getDebits()) {
-////                time_t now = time(nullptr);
-////                time_t nextExec = cron::cron_next(d->getRegularity(), d->getTimeSet());
-////                if (now == nextExec - 1) {
-////                    processDebits(dat, tran, d, public_key, context, params);
-////                }
-////            }
-////        }
-////        _sleep(997);
-////        runDebitSubroutine(dat, tran, user, public_key, context, params);
-////    }
-////    catch (std::exception& e) {
-////        std::cout << e.what() << std::endl;
-////    }
-////}
-//
-//void createAndSaveBFVParams() {
-//    size_t poly_modulus_degree = 2048;
-//    seal::EncryptionParameters params(seal::scheme_type::bfv);
-//    params.set_poly_modulus_degree(poly_modulus_degree);
-//    params.set_coeff_modulus(seal::CoeffModulus::BFVDefault(poly_modulus_degree));
-//    params.set_plain_modulus(1'342'177'28);
-//    seal::SEALContext context(params);
-//    seal::KeyGenerator keygen(context);
-//    seal::SecretKey secret_key;
-//    seal::PublicKey public_key;
-//    secret_key = keygen.secret_key();
-//    keygen.create_public_key(public_key);
-//
-//    std::ofstream privFileOut("privateKey.pem", std::ios::binary);
-//    secret_key.save(privFileOut);
-//    std::cout << "Successfully saved private key." << std::endl;
-//    privFileOut.close();
-//
-//    std::ofstream pubFileOut("publicKey.pem", std::ios::binary);
-//    public_key.save(pubFileOut);
-//    std::cout << "Successfully saved public key." << std::endl;
-//    pubFileOut.close();
-//
-//    std::ofstream paramsFileOut("params.txt", std::ios::binary);
-//    params.save(paramsFileOut);
-//    std::cout << "Successfully saved parameters." << std::endl;
-//    paramsFileOut.close();
-//}
-//void createAndSaveCKKSParams() {
-//    seal::EncryptionParameters params(seal::scheme_type::ckks);
-//    size_t poly_modulus_degree = 8192;
-//    params.set_poly_modulus_degree(poly_modulus_degree);
-//    params.set_coeff_modulus(seal::CoeffModulus::Create(poly_modulus_degree, { 60, 40, 40, 60 }));
-//    seal::SecretKey secret_key;
-//    seal::PublicKey public_key;
-//    seal::SEALContext context(params);
-//    seal::KeyGenerator keyGen(context);
-//    keyGen.create_public_key(public_key);
-//    secret_key = keyGen.secret_key();
-//    std::cout << context.parameter_error_message() << std::endl;
-//    std::ofstream privFileOut("privateKeyCKKS.pem", std::ios::binary);
-//    secret_key.save(privFileOut);
-//    std::cout << "Successfully saved private key." << std::endl;
-//    privFileOut.close();
-//
-//    std::ofstream pubFileOut("publicKeyCKKS.pem", std::ios::binary);
-//    public_key.save(pubFileOut);
-//    std::cout << "Sucessfully saved public key." << std::endl;
-//    pubFileOut.close();
-//
-//    std::ofstream paramsFileOut("paramsCKKS.txt", std::ios::binary);
-//    params.save(paramsFileOut);
-//    std::cout << "Successfully saved parameters." << std::endl;
-//    paramsFileOut.close();
-//}
-//
-//void loadBFVParams(seal::EncryptionParameters& params, seal::PublicKey& public_key) {
-//    std::ifstream paramsFileIn("params.txt", std::ios::binary);
-//    params.load(paramsFileIn);
-//    paramsFileIn.close();
-//    std::cout << "Successfully loaded parameters." << std::endl;
-//    seal::SEALContext context(params);
-//    std::cout << context.parameter_error_message() << std::endl;
-//
-//    std::ifstream pubFileIn("publicKey.pem", std::ios::binary);
-//    public_key.load(context, pubFileIn);
-//    pubFileIn.close();
-//    std::cout << "Successfully loaded public key." << std::endl;
-//}
-//
-//
-//
-//Account* serverLoginSequence(LoginHandler* log, DBHandler* dat, seal::SEALContext context, TCPHandler handler, SOCKET &ClientSocket, SOCKET &ListenSocket, SOCKET &ConnectSocket) {
-//    try {
-//            dat->connectToDB();
-//            int choice = handler.receiveInt(ClientSocket);
-//            int received = 0;
-//            if (choice == 0) {
-//                std::cout << "Connected client app has been closed." << std::endl;
-//                return nullptr;
-//            }
-//            std::cout << "Login attempt on " << choice << " received!" << std::endl;
-//            Account* account = dat->getAccount(choice, context);
-//            if (account != nullptr) {
-//                handler.transmitInt(ConnectSocket, 1);
-//            }
-//            else {
-//                handler.transmitInt(ConnectSocket, 0);
-//                return nullptr;
-//            }
-//            std::cout << "Welcome, " << account->getFirstName() << std::endl;
-//            int len = handler.receiveInt(ClientSocket);
-//            char* pin = handler.receiveCharArray(ClientSocket, len);
-//            std::cout << pin << std::endl;
-//            if (std::to_string(account->getHashedPin()).compare(pin) == 0) {
-//                std::cout << "Pin matches!" << std::endl;
-//                handler.transmitInt(ConnectSocket, 1);
-//                return account;
-//            }
-//            else {
-//                std::cout << "Pin does not match!" << std::endl;
-//                handler.transmitInt(ConnectSocket, 0);
-//                return nullptr;
-//            }
-//            std::cout << "Ready for next request!" << std::endl;
-//    }
-//    catch (std::exception& e) {
-//        std::cout << e.what() << std::endl;
-//    }
-//}
-//
-//bool serverTransferSequence(DBHandler* dat, TCPHandler handler, SOCKET& ConnectSocket, SOCKET& ClientSocket, seal::SEALContext context, seal::PublicKey public_key, seal::EncryptionParameters params, Account* logged) {
-//    // Receive account id
-//    try {
-//        int id = handler.receiveInt(ClientSocket);
-//        Account* accTo = dat->getAccount(id, context);
-//        if (accTo == nullptr) {
-//            std::cout << "Invalid account." << std::endl;
-//            handler.transmitInt(ConnectSocket, 1);
-//            return false;
-//        }
-//        else {
-//            std::cout << "Valid account." << std::endl;
-//            handler.transmitInt(ConnectSocket, 0);
-//            std::cout << "Receive file and name" << std::endl;
-//            const char* name = handler.receiveFile(ClientSocket);
-//            if (name == nullptr) {
-//                handler.transmitInt(ClientSocket, 1);
-//                return false;
-//            }
-//            std::cout << "File name: " << name << std::endl;
-//            seal::Ciphertext c;
-//            std::ifstream inFile(name, std::ios::binary);
-//            c.load(context, inFile);
-//            inFile.close();
-//            std::cout << "Ciphertext extracted!" << std::endl;
-//            dat->logAndHandleTransaction(logged, accTo, c, public_key, context, params);
-//            handler.transmitInt(ConnectSocket, 0);
-//            return true;
-//        }
-//    }
-//    catch (std::exception& e) {
-//        std::cout << e.what() << std::endl;
-//        handler.transmitInt(ClientSocket, 1);
-//        return false;
-//    }
-//}
-//
-//bool serverBalanceSequence(TCPHandler handler, SOCKET &ConnectSocket, SOCKET &ClientSocket, seal::SEALContext context, Account* logged) {
-//    handler.transmitFile(ConnectSocket, logged->getBalanceAddress());
-//    int read = handler.receiveInt(ClientSocket);
-//    std::cout << read << std::endl;
-//    if (read == 1) {
-//        std::cout << "Information not received properly. Trying again." << std::endl;
-//        return serverBalanceSequence(handler, ConnectSocket, ClientSocket, context, logged);
-//        
-//    }
-//    return true;
-//}
-//
-//bool serverHistorySequence(TCPHandler handler, SOCKET& ConnectSocket, SOCKET& ClientSocket, seal::SEALContext context, seal::EncryptionParameters params, DBHandler* dat, Account* logged) {
-//    try {
-//        TransactionList* list = dat->getTransactions(logged->getId(), context);
-//        if (list == nullptr) {
-//            return true;
-//        }
-//        for (Transaction* t : list->getTransactions()) {
-//            try {
-//                while (true) {
-//                    t->printTransaction(context, params);
-//                    list->removeTransaction(t);
-//                    break;
-//                }
-//            }
-//            catch (std::exception& e) {
-//                std::cout << e.what() << std::endl;
-//            }
-//        }
-//        return true;
-//    }
-//    catch (std::exception& e) {
-//        std::cout << e.what() << std::endl;
-//        return false;
-//    }
-//}
-//
-//bool serverMenuSequence(DBHandler* dat, TCPHandler handler, SOCKET &ConnectSocket, SOCKET& ClientSocket, seal::SEALContext context, seal::PublicKey public_key, seal::EncryptionParameters params, Account* logged) {
-//    try {
-//        while (true) {
-//            int choice = handler.receiveInt(ClientSocket);
-//            std::cout << "choice: " << choice << std::endl;
-//            switch (choice) {
-//            case 1:
-//                serverTransferSequence(dat, handler, ConnectSocket, ClientSocket, context, public_key, params, logged);
-//                break;
-//            case 2:
-//                serverBalanceSequence(handler, ConnectSocket, ClientSocket, context, logged);
-//                break;
-//            case 3:
-//                serverHistorySequence(handler, ConnectSocket, ClientSocket, context, params, dat, logged);
-//                std::cout << "Program is exited." << std::endl;
-//                break;
-//            case 4:
-//                break;
-//            case 5:
-//                std::cout << "Logging out!" << std::endl;
-//                dat->logout();
-//                return true;
-//            default:
-//                std::cout << "Number greater than expected received!" << std::endl;
-//                break;
-//            }
-//        }
-//    }
-//    catch (std::exception& e) {
-//        std::cout << e.what() << std::endl;
-//    }
-//}
-//
-//int __cdecl main(void)
-//{
-//    //try {
-//    //    TCPHandler handler;
-//    //    SOCKET ClientSocket;
-//    //    SOCKET ListenSocket;
-//    //    SOCKET ConnectSocket;
-//    //    while (true) {
-//    //        ClientSocket = INVALID_SOCKET;
-//    //        ListenSocket = INVALID_SOCKET;
-//    //        ConnectSocket = INVALID_SOCKET;
-//    //        handler.initiateListenConnection(DEFAULT_RECEIVE_PORT, ClientSocket, ListenSocket);
-//    //        handler.initiateSendConnection(DEFAULT_SEND_PORT, ConnectSocket);
-//    //        seal::PublicKey public_key;
-//    //        seal::EncryptionParameters params;
-//    //        loadCKKSParams(params, public_key);
-//    //        std::cout << params.coeff_modulus().size() << std::endl;
-//    //        seal::SEALContext context(params);
-//    //        DebitList* debits = new DebitList();
-//    //        TransactionList* transactions = new TransactionList();
-//    //        LoginHandler* log = new LoginHandler();
-//    //        TransactionHandler* tran = new TransactionHandler(transactions, debits);
-//    //        DBHandler* dat = new DBHandler(log, tran);
-//    //        Account* logged = serverLoginSequence(log, dat, context, handler, ClientSocket, ListenSocket, ConnectSocket);
-//    //        if (logged != nullptr) {
-//    //            log->setLogged(logged);
-//    //            std::cout << "Loading menu: " << std::endl;
-//    //            serverMenuSequence(dat, handler, ConnectSocket, ClientSocket, context, public_key, params, logged);
-//    //        }
-//    //        closesocket(ClientSocket);
-//    //        closesocket(ListenSocket);
-//    //        closesocket(ConnectSocket);
-//    //        WSACleanup();
-//    //        delete dat;
-//    //        delete tran;
-//    //        delete log;
-//    //        delete transactions;
-//    //        delete debits;
-//    //    }
-//    //}
-//    //catch (std::exception& e) {
-//    //    std::cout << e.what() << std::endl;
-//    //}
-//
-//
-
-//
-//    //std::ifstream inFile2("privateKeyCKKS.pem", std::ios::binary);
-//    //std::ifstream inFile3("testCipher1.txt", std::ios::binary);
-//    //std::ifstream inFile("testCipher2.txt", std::ios::binary);
-//    //c.load(context, inFile);
-//    //seal::SecretKey secret_key;
-//    //secret_key.load(context, inFile2);
-//    //inFile.close();
-//    //inFile2.close();
-//    //seal::Decryptor decryptor(context, secret_key);
-//    //decryptor.decrypt(c, p);
-//    //std::vector<double> ans;
-//    //encoder.decode(p, ans);
-//    //std::cout << std::fixed << std::setprecision(2) << ans[0] << std::endl;
-//    //c.load(context, inFile3);
-//    //inFile3.close();
-//    //decryptor.decrypt(c, p);
-//    //ans.clear();
-//    //encoder.decode(p, ans);
-//    //std::cout << std::fixed << std::setprecision(2) << ans[0] << std::endl;
-//    //TCPHandler handler;
-//    //SOCKET ClientSocket = INVALID_SOCKET;
-//    //SOCKET ListenSocket = INVALID_SOCKET;
-//    //SOCKET ConnectSocket = INVALID_SOCKET;
-//    //handler.initiateListenConnection(DEFAULT_RECEIVE_PORT, ClientSocket, ListenSocket);
-//    //handler.initiateSendConnection(DEFAULT_SEND_PORT, ConnectSocket);
-//    //handler.transmitFile(ConnectSocket, "testCipher1.txt");
-//}
-
 #include "UserHandler.h"
 #include "TransactionList.h"
 #include "DebitList.h"
@@ -368,7 +8,6 @@
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <set>
 #include <string>
 #include <locale>
 #include <cpprest/http_listener.h>
@@ -378,7 +17,15 @@
 #include <codecvt>
 #include <openssl/conf.h>
 #include <openssl/evp.h>
+#include <openssl/evperr.h>
 #include <openssl/err.h>
+#include <openssl/rsa.h>
+#include <openssl/rsaerr.h>
+#include <openssl/aes.h>
+#include <openssl/pem.h>
+#include <openssl/rand.h>
+#include <sstream>
+#include <utility>
 #pragma comment(lib, "cpprest_2_10")
 
 using namespace web;
@@ -386,313 +33,52 @@ using namespace web::http;
 using namespace web::http::client;
 using namespace web::http::experimental::listener;
 using namespace concurrency::streams;
-
 using namespace std;
 
 
-static TransactionList* transactions = new TransactionList();
-static DebitList* debits = new DebitList();
-static LoginHandler* loginHandler = new LoginHandler();
-static TransactionHandler* tran = new TransactionHandler(transactions, debits);
-static DBHandler* dat = new DBHandler(loginHandler, tran);
-static seal::SecretKey* secret_key = new seal::SecretKey;
-static seal::PublicKey* public_key = new seal::PublicKey;
-static seal::EncryptionParameters* params = new seal::EncryptionParameters(seal::scheme_type::ckks);
-static seal::SEALContext* context = new seal::SEALContext(NULL);
-static map<int, wstring> loggedIn;
+TransactionList* transactions = new TransactionList();
+DebitList* debits = new DebitList();
+TransactionHandler* tran = new TransactionHandler(transactions, debits);
+DBHandler* dat = new DBHandler(tran);
+seal::EncryptionParameters* params = new seal::EncryptionParameters(seal::scheme_type::ckks);
+seal::SEALContext* context = new seal::SEALContext(NULL);
+map<int, wstring> loggedIn;
+map<wstring, unsigned char*> ipsAndKeys;
+map<wstring, unsigned char*> ipsAndIvs;
+map <wstring, unsigned char*> idsandKeys;
+map <wstring, unsigned char*> idsandIvs;
+int transactionID;
+string pubKey;
+string priKey;
 
-/* A 256 bit key */
-static unsigned char* key = (unsigned char*)"01234567890123456789012345678901";
+#define KEY_LENGTH 2048 // Key length
+#define AES_BITS 256 // AES Key length
+#define PUB_KEY_FILE "serverRSApub.pem" // RSA public key path
+#define PRI_KEY_FILE "serverRSApri.pem" // RSA private key path
 
-/* A 128 bit IV */
-static unsigned char* iv = (unsigned char*)"0123456789012345";
-
-
-void loadCKKSParams(seal::EncryptionParameters& params, seal::PublicKey& public_key) {
-    std::ifstream paramsFileIn("paramsCKKS.txt", std::ios::binary);
-    params.load(paramsFileIn);
-    paramsFileIn.close();
-    seal::SEALContext context(params);
-    std::ifstream pubFileIn("publicKeyCKKS.pem", std::ios::binary);
-    public_key.load(context, pubFileIn);
-    pubFileIn.close();
+void GenerateAESKey(unsigned char* outAESKey, unsigned char* outAESIv) {
+    unsigned char* key = new unsigned char[AES_BITS];
+    unsigned char* iv = new unsigned char[AES_BITS / 2];
+    if (!RAND_bytes(outAESKey, AES_BITS)) {
+        cout << "Error creating key." << endl;
+    }
+    if ( !RAND_bytes(outAESIv, AES_BITS / 2)) {
+        cout << "Error creating IV." << endl;
+    }
+    cout << "AES key: " << endl;
+    for (int i = 0; i < AES_BITS; ++i) {
+        cout << (int)outAESKey[i];
+    }cout << endl;
+    cout << "IV: " << endl;
+    for (int i = 0; i < AES_BITS / 2; ++i) {
+        cout << (int)outAESIv[i];
+    }cout << endl;
+    cout << endl;
 }
-
-
-void handle_get(http_request request)
-{
-    wcout << "Handle GET" << endl;
-    wstring h = request.relative_uri().to_string();
-    auto index = h.find_first_not_of('/');
-    std::wstring fileName;
-    fileName = fileName.substr(index, fileName.length());
-    wcout << fileName << endl;
-    if (!filesystem::exists(fileName)) {
-        request.reply(status_codes::BadRequest);
-    }
-    else {
-        auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
-        request.reply(status_codes::OK, f.streambuf()).get();
-    }
-}
-
-void handle_post(http_request request)
-{
-    wcout << "Handle POST" << endl;
-    auto req = request.body();
-    auto buf = req.streambuf();
-    string result;
-    wstring h = request.relative_uri().to_string();
-    while (!buf.is_eof()) {
-        result += buf.sbumpc();
-    }
-    auto index = h.find_first_not_of('/');
-    std::wstring fileName;
-    fileName = fileName.substr(index, fileName.length());
-    wcout << fileName << endl;
-    std::ofstream outFile(fileName, std::ios::binary);
-    outFile << result;
-    outFile.close();
-    request.reply(status_codes::OK);
-}
-
-void handle_put(http_request request)
-{
-    wcout << "Handle PUT" << endl;
-    auto req = request.body();
-    auto buf = req.streambuf();
-    string result;
-    wstring h = request.relative_uri().to_string();
-    auto index = h.find_first_not_of('/');
-    std::wstring fileName;
-    fileName = fileName.substr(index, fileName.length());
-    wcout << fileName << endl;
-    if (!filesystem::exists(fileName)) {
-        request.reply(status_codes::BadRequest);
-    }
-    else {
-        while (!buf.is_eof()) {
-            result += buf.sbumpc();
-        }
-        std::ofstream outFile(fileName, std::ios::binary);
-        outFile << result;
-        outFile.close();
-        request.reply(status_codes::OK);
-    }
-}
-
-void handle_del(http_request request)
-{
-    wcout << "Handle DELETE" << endl;
-    auto req = request.body();
-    wstring h = request.relative_uri().to_string();
-    auto index = h.find_first_not_of('/');
-    std::wstring fileName;
-    fileName = fileName.substr(index, fileName.length());
-    wcout << fileName << endl;
-    if (!filesystem::exists(fileName)) {
-        request.reply(status_codes::BadRequest);
-    }
-    else {
-        if (filesystem::remove(fileName)) {
-            request.reply(status_codes::OK);
-        }
-        else {
-            request.reply(status_codes::InternalError);
-        }
-    }
-
-}
-
-void serverLogin(http_request request) {
-    secret_key->load(*context, *new ifstream("privateKeyCKKS.pem", std::ios::binary));
-    loadCKKSParams(*params, *public_key);
-    wstring id = request.relative_uri().to_string();
-    id = id.substr(1, id.length());
-    wcout << id << endl;
-    wcout << request.get_remote_address() << endl;
-    if (loggedIn.contains(stoi(id))) {
-        request.reply(status_codes::Conflict);
-    }
-    Account* acc = dat->getAccount(stoi(id), *context);
-    if (acc == nullptr || stoi(id) == 1) { // Checks to see if the account is null or the admin account.
-        request.reply(status_codes::BadRequest);
-    }
-    else {
-        wstring pin = L"";
-        auto buf = request.body().streambuf();
-        while (!buf.is_eof()) {
-            pin += buf.sbumpc();
-        }
-        pin = pin.substr(0, pin.length() - 1);
-        wstring actualPin = to_wstring(acc->getHashedPin());
-        wcout << pin << endl;
-        wcout << actualPin << endl;
-        if (pin.compare(actualPin) == 0) {
-            loggedIn.insert(pair<int, wstring>(acc->getId(), request.get_remote_address()));
-            request.reply(status_codes::OK);
-        }
-        else {
-            request.reply(status_codes::NotAcceptable);
-        }
-    }
-}
-
-void serverLogout(http_request request) {
-    wstring id = request.relative_uri().to_string();
-    id = id.substr(1, id.length());
-    wcout << request.get_remote_address() << endl;
-    if (loggedIn.contains(stoi(id))) {
-        if (loggedIn.at(stoi(id)).compare(request.get_remote_address()) == 0) {
-            loggedIn.erase(stoi(id));
-            request.reply(status_codes::OK);
-        }
-        else {
-            request.reply(status_codes::Forbidden);
-        }
-    }
-    else {
-        request.reply(status_codes::Forbidden);
-    }
-}
-
-void serverTransfer(http_request request) {
-    wstring uri = request.relative_uri().to_string();
-    wcout << uri << endl;
-    uri = uri.substr(1, uri.length());
-    int idFrom = stoi(uri);
-    cout << "ID from: " << idFrom << endl;
-    int index = uri.find_first_of(',');
-    uri = uri.substr(index+1, uri.length());
-    int idTo = stoi(uri);
-    cout << "ID to: " << idTo << endl;
-    Account* accFrom = dat->getAccount(idFrom, *context);
-    Account* accTo = dat->getAccount(idTo, *context);
-    if (accTo == nullptr) {
-        request.reply(status_codes::BadRequest);
-    }
-    auto buf = request.body().streambuf();
-    wstring amount;
-    while (!buf.is_eof()) {
-        amount += buf.sbumpc();
-    }
-    double am = stod(amount);
-    cout << "Amount to transfer: " << am << endl;
-    if (loggedIn.contains(idFrom)) {
-        cout << "idFrom is logged in" << endl;
-        if (loggedIn.at(idFrom).compare(request.get_remote_address()) == 0) {
-            cout << "request comes from the same IP" << endl;
-            seal::CKKSEncoder encoder(*context);
-            seal::Encryptor encryptor(*context, *public_key);
-            seal::Decryptor decryptor(*context, *secret_key);
-            seal::Plaintext plaintext;
-            seal::Ciphertext ciphertext;
-            cout << "encryption stuff set up" << endl;
-            double scale = pow(2, 20);
-            encoder.encode(am, scale, plaintext);
-            cout << "Amount encoded" << endl;
-            encryptor.encrypt(plaintext, ciphertext);
-            cout << "Amount encrypted" << endl;
-            cout << "We encrypt the amount to send" << endl;
-            wstring fileName = to_wstring(idFrom) + L"'" + to_wstring(idTo) + L"'" + to_wstring(time(nullptr));
-            ofstream outFile(fileName, std::ios::binary);
-            ciphertext.save(outFile);
-            outFile.close();
-            cout << "We save the amount into a temp file" << endl;
-            http_client client(L"http://localhost:8081/balance");
-            wstring balAddress = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress());
-            auto response = client.request(methods::GET, balAddress).get();
-            cout << "We request the balance for the sending account" << endl;
-            std::ofstream outFile2(balAddress, std::ios::binary);
-            auto fileContent = response.body().streambuf();
-            string content = "";
-            while (!fileContent.is_eof()) {
-                content += fileContent.sbumpc();
-            }
-            outFile2 << content;
-            outFile2.close();
-            cout << "We write this into its file" << endl;
-            vector<double> res;
-            ifstream inFile2(accFrom->getBalanceAddress(), std::ios::binary);
-            ciphertext.load(*context, inFile2);
-            decryptor.decrypt(ciphertext, plaintext);
-            encoder.decode(plaintext, res);
-            cout << res[0] << endl;
-            if (am <= res[0] + accFrom->getOverdraft()) {
-                cout << "Can verify that the amount is ok" << endl;
-                
-                http_client client2(L"http://localhost:8081/transfer");
-                auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
-                auto response = client2.request(methods::PUT, std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress()) + L"," + std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accTo->getBalanceAddress()) + L"," + fileName + L".txt", f.streambuf());
-                wcout << response.get().status_code();
-                request.reply(status_codes::OK);
-            }
-            else {
-                request.reply(status_codes::BadRequest);
-            }
-        }
-        else {
-            request.reply(status_codes::Forbidden);
-        }
-    }
-    else {
-        request.reply(status_codes::Forbidden);
-    }
-}
-
-void serverBalance(http_request request) {
-    try {
-        wstring idTo = request.relative_uri().to_string();
-        idTo = idTo.substr(1, idTo.length());
-        wcout << idTo << endl;
-        int id = stoi(idTo);
-        if (loggedIn.contains(id)) {
-            if (loggedIn.at(id).compare(request.get_remote_address()) == 0) {
-                Account* account = dat->getAccount(id, *context);
-                cout << account->getBalanceAddress() << endl;
-                http_client client(L"http://localhost:8081/balance");
-                wstring balAddress = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(account->getBalanceAddress());
-                auto response = client.request(methods::GET, balAddress).get();
-                std::ofstream outFile(balAddress, std::ios::binary);
-                auto fileContent = response.body().streambuf();
-                string content = "";
-                while (!fileContent.is_eof()) {
-                    content += fileContent.sbumpc();
-                }
-                outFile << content;
-                outFile.close();
-                seal::Decryptor decryptor(*context, *secret_key);
-                seal::CKKSEncoder encoder(*context);
-                seal::Ciphertext ciphertext;
-                seal::Plaintext plaintext;
-                ifstream inFile(balAddress, std::ios::binary);
-                ciphertext.load(*context, inFile);
-                inFile.close();
-                vector<double> result;
-                decryptor.decrypt(ciphertext, plaintext);
-                encoder.decode(plaintext, result);
-                request.reply(status_codes::OK, result[0]);
-            }
-            else {
-                request.reply(status_codes::Forbidden);
-            }
-        }
-        else {
-            request.reply(status_codes::Forbidden);
-        }
-    }
-    catch (exception& e) {
-        cout << e.what();
-        request.reply(status_codes::InternalError);
-    }
-}
-
 void handleErrors(void)
 {
     ERR_print_errors_fp(stderr);
-    abort();
 }
-
 int encrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key,
     unsigned char* iv, unsigned char* ciphertext)
 {
@@ -737,7 +123,6 @@ int encrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key,
 
     return ciphertext_len;
 }
-
 int decrypt(unsigned char* ciphertext, int ciphertext_len, unsigned char* key,
     unsigned char* iv, unsigned char* plaintext)
 {
@@ -782,123 +167,1062 @@ int decrypt(unsigned char* ciphertext, int ciphertext_len, unsigned char* key,
 
     return plaintext_len;
 }
+wstring aesEncrypt(string input, unsigned char* key, unsigned char* iv) {
+    unsigned char* plaintext = new unsigned char[input.length() * 16];
+    unsigned char* ciphertext = new unsigned char[input.length() * 16];
+    plaintext = reinterpret_cast<unsigned char*>(const_cast<char*>(input.c_str()));
+    int ciphertext_len;
+    ciphertext_len = encrypt(plaintext, input.length(), key, iv, ciphertext);
+    wstring toSend = L"";
+    toSend += to_wstring(ciphertext_len) + L",";
+    for (int i = 0; i < ciphertext_len; ++i) {
+        toSend += to_wstring((int)ciphertext[i]) + L",";
+    }
+    wcout << "Encrypted message sent: " << toSend << endl;
+    return toSend;
+}
+string aesDecrypt(wstring input, unsigned char* key, unsigned char* iv) {
+    int index = input.find_first_of(L",");
+    int ciphertext_len = stoi(input.substr(0, index));
+    cout << "Length: " << ciphertext_len << endl;
+    wstring body = input.substr(index + 1, input.length());
+    unsigned char* ciphertext = new unsigned char[ciphertext_len];
+    unsigned char* plaintext = new unsigned char[ciphertext_len];
+    for (int i = 0; i < ciphertext_len; ++i) {
+        index = body.find_first_of(L",");
+        int toAdd = stoi(body.substr(0, index));
+        body = body.substr(index + 1, body.length());
+        ciphertext[i] = (unsigned char)toAdd;
+    }
+    int plaintext_len = decrypt(ciphertext, ciphertext_len, key, iv, plaintext);
+    string final = "";
+    for (int i = 0; i < plaintext_len; ++i) {
+        final += (char)((int)plaintext[i]);
+    }
+    return final;
+}
+void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key)
+{
+    size_t pri_len = 0; // Private key length
+    size_t pub_len = 0; // public key length
+    char* pri_key = nullptr; // private key
+    char* pub_key = nullptr; // public key
 
-void test(http_request request) {
+    // Generate key pair
+    RSA* keypair = RSA_generate_key(KEY_LENGTH, RSA_3, NULL, NULL);
 
-    wstring s1 = request.extract_utf16string().get();
-    wstring uri = request.relative_uri().to_string();
-    uri = uri.substr(1, uri.length());
-    int index = uri.find_first_of(',');
-    int plaintext_len = stoi(uri.substr(0, index));
-    wcout << plaintext_len << endl;
-    int ciphertext_len = stoi(uri.substr(index + 1, uri.length()));
-    wcout << ciphertext_len << endl;
-    char* intermediary = new char[ciphertext_len];
-    unsigned char* converted = new unsigned char[ciphertext_len];
-    wcstombs(intermediary, s1.c_str(), ciphertext_len);
-    converted = reinterpret_cast<unsigned char*>(intermediary);
-    unsigned char* final = new unsigned char[ciphertext_len];
-    int decrypted_len = decrypt(converted, ciphertext_len, key, iv, final);
-    int diff = (ciphertext_len - plaintext_len);
-    cout << diff << endl;
-    unsigned char pad = (unsigned char)diff;
-    cout << pad << endl;
-    unsigned char* fin = new unsigned char[decrypted_len];
-    for (int i = 0; i < strlen((char*)final); ++i) {
-        if (final[i] != pad) {
-            fin[i] = final[i];
+    BIO* pri = BIO_new(BIO_s_mem());
+    BIO* pub = BIO_new(BIO_s_mem());
+
+    // Generate private key
+    PEM_write_bio_RSAPrivateKey(pri, keypair, NULL, NULL, 0, NULL, NULL);
+    // Note------Generate the public key in the first format
+//PEM_write_bio_RSAPublicKey(pub, keypair);
+     // Note------Generate the public key in the second format (this is used in the code here)
+    PEM_write_bio_RSA_PUBKEY(pub, keypair);
+    // Get the length  
+    pri_len = BIO_pending(pri);
+    pub_len = BIO_pending(pub);
+
+    // The key pair reads the string  
+    pri_key = (char*)malloc(pri_len + 1);
+    pub_key = (char*)malloc(pub_len + 1);
+
+    BIO_read(pri, pri_key, pri_len);
+    BIO_read(pub, pub_key, pub_len);
+
+    pri_key[pri_len] = '\0';
+    pub_key[pub_len] = '\0';
+
+    out_pub_key = pub_key;
+    out_pri_key = pri_key;
+
+    // Write the public key to the file
+    std::ofstream pub_file(PUB_KEY_FILE, std::ios::out);
+    if (!pub_file.is_open())
+    {
+        perror("pub key file open fail:");
+        return;
+    }
+    pub_file << pub_key;
+    pub_file.close();
+
+    // write private key to file
+    std::ofstream pri_file(PRI_KEY_FILE, std::ios::out);
+    if (!pri_file.is_open())
+    {
+        perror("pri key file open fail:");
+        return;
+    }
+    pri_file << pri_key;
+    pri_file.close();
+
+    // release memory
+    RSA_free(keypair);
+    BIO_free_all(pub);
+    BIO_free_all(pri);
+
+    free(pri_key);
+    free(pub_key);
+}
+string RsaPriEncrypt(const std::string& clear_text, std::string& pri_key)
+{
+    std::string encrypt_text;
+    BIO* keybio = BIO_new_mem_buf((unsigned char*)pri_key.c_str(), -1);
+    RSA* rsa = RSA_new();
+    rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, NULL, NULL);
+    if (!rsa)
+    {
+        BIO_free_all(keybio);
+        return std::string("");
+    }
+
+    // Get the maximum length of data that RSA can process at a time
+    int len = RSA_size(rsa);
+
+    // Apply for memory: store encrypted ciphertext data
+    char* text = new char[len + 1];
+    memset(text, 0, len + 1);
+
+    // Encrypt the data with a private key (the return value is the length of the encrypted data)
+    int ret = RSA_private_encrypt(clear_text.length(), (const unsigned char*)clear_text.c_str(), (unsigned char*)text, rsa, RSA_PKCS1_PADDING);
+    if (ret >= 0) {
+        encrypt_text = std::string(text, ret);
+    }
+
+    // release memory  
+    free(text);
+    BIO_free_all(keybio);
+    RSA_free(rsa);
+
+    return encrypt_text;
+}
+string RsaPubDecrypt(const std::string& cipher_text, const std::string& pub_key)
+{
+    std::string decrypt_text;
+    BIO* keybio = BIO_new_mem_buf((unsigned char*)pub_key.c_str(), -1);
+    RSA* rsa = RSA_new();
+
+    // Note--------Use the public key in the first format for decryption
+   //rsa = PEM_read_bio_RSAPublicKey(keybio, &rsa, NULL, NULL);
+    // Note--------Use the public key in the second format for decryption (we use this format as an example)
+    rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
+    if (!rsa)
+    {
+        unsigned long err = ERR_get_error(); //Get the error number
+        char err_msg[1024] = { 0 };
+        ERR_error_string(err, err_msg); // Format: error:errId: library: function: reason
+        printf("err msg: err:%ld, msg:%s\n", err, err_msg);
+        BIO_free_all(keybio);
+        return decrypt_text;
+    }
+
+    int len = RSA_size(rsa);
+    char* text = new char[len + 1];
+    memset(text, 0, len + 1);
+    // Decrypt the ciphertext
+    int ret = RSA_public_decrypt(cipher_text.length(), (const unsigned char*)cipher_text.c_str(), (unsigned char*)text, rsa, RSA_PKCS1_PADDING);
+    if (ret >= 0) {
+        decrypt_text.append(std::string(text, ret));
+    }
+
+    // release memory  
+    delete text;
+    BIO_free_all(keybio);
+    RSA_free(rsa);
+
+    return decrypt_text;
+}
+string RsaPubEncrypt(const std::string& clear_text, const std::string& pub_key)
+{
+    try {
+        std::string encrypt_text;
+        BIO* keybio = BIO_new_mem_buf((unsigned char*)pub_key.c_str(), -1);
+        RSA* rsa = RSA_new();
+        // Note the public key in the first format
+       //rsa = PEM_read_bio_RSAPublicKey(keybio, &rsa, NULL, NULL);
+        // Note the public key in the second format (here we take the second format as an example)
+        rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
+        if (!rsa) {
+            throw new exception("Bad RSA initialisation");
         }
-        else {
-            fin[i] = '\0';
-            break;
+        // Get the maximum length of the data block that RSA can process at a time
+        int key_len = RSA_size(rsa);
+        int block_len = key_len - 11; // Because the filling method is RSA_PKCS1_PADDING, so you need to subtract 11 from the key_len
+
+        // Apply for memory: store encrypted ciphertext data
+        char* sub_text = new char[key_len + 1];
+        memset(sub_text, 0, key_len + 1);
+        int ret = 0;
+        int pos = 0;
+        std::string sub_str;
+        // Encrypt the data in segments (the return value is the length of the encrypted data)
+        while (pos < clear_text.length()) {
+            sub_str = clear_text.substr(pos, block_len);
+            memset(sub_text, 0, key_len + 1);
+            ret = RSA_public_encrypt(sub_str.length(), (const unsigned char*)sub_str.c_str(), (unsigned char*)sub_text, rsa, RSA_PKCS1_PADDING);
+            if (ret >= 0) {
+                encrypt_text.append(std::string(sub_text, ret));
+            }
+            pos += block_len;
+        }
+
+        // release memory  
+        BIO_free_all(keybio);
+        RSA_free(rsa);
+        delete[] sub_text;
+
+        return encrypt_text;
+    }
+    catch (exception& e) {
+        cout << e.what() << endl;
+    }
+}
+string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
+{
+    std::string decrypt_text;
+    RSA* rsa = RSA_new();
+    BIO* keybio;
+    keybio = BIO_new_mem_buf((unsigned char*)pri_key.c_str(), -1);
+
+    rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, NULL, NULL);
+    if (!rsa) {
+        unsigned long err = ERR_get_error(); //Get the error number
+        char err_msg[1024] = { 0 };
+        ERR_error_string(err, err_msg); // Format: error:errId: library: function: reason
+        printf("err msg: err:%ld, msg:%s\n", err, err_msg);
+        return std::string();
+    }
+
+    // Get the maximum length of RSA single processing
+    int key_len = RSA_size(rsa);
+    char* sub_text = new char[key_len + 1];
+    memset(sub_text, 0, key_len + 1);
+    int ret = 0;
+    std::string sub_str;
+    int pos = 0;
+    // Decrypt the ciphertext in segments
+    while (pos < cipher_text.length()) {
+        sub_str = cipher_text.substr(pos, key_len);
+        memset(sub_text, 0, key_len + 1);
+        ret = RSA_private_decrypt(sub_str.length(), (const unsigned char*)sub_str.c_str(), (unsigned char*)sub_text, rsa, RSA_PKCS1_PADDING);
+        if (ret >= 0) {
+            decrypt_text.append(std::string(sub_text, ret));
+            printf("pos:%d, sub: %s\n", pos, sub_text);
+            pos += key_len;
         }
     }
-    wcout << L"Ciphertext received: " << s1 << endl;
-    cout << "Decrypted message: " << final << endl;
-    cout << "Removed padding: " << fin << endl;
-    request.reply(status_codes::OK);
+    // release memory  
+    delete[] sub_text;
+    BIO_free_all(keybio);
+    RSA_free(rsa);
+
+    return decrypt_text;
+}
+void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
+    seal::Ciphertext ciphertext2;
+    http_client client(L"http://localhost:8081/balance");
+    auto response = client.request(methods::GET, balAddress);
+    auto buf = response.get().body().streambuf();
+    string contents = "";
+    while (!buf.is_eof()) {
+        if (buf.getc().get() != -2) // Gets rid of weird requiring 'async required' bugs
+            contents += buf.sbumpc();
+    }
+    ofstream outFile(balAddress, std::ios::binary);
+    outFile << contents;
+    outFile.close();
+    ifstream inFile(balAddress, std::ios::binary | std::ios::beg);
+    ciphertext2.load(*context, inFile);
+    inFile.close();
+    ciphertext = ciphertext2;
+    std::remove(std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(balAddress).c_str());
+}
+void createAndSaveCKKSParams() {
+    seal::EncryptionParameters params(seal::scheme_type::ckks);
+    size_t poly_modulus_degree = 8192;
+    params.set_poly_modulus_degree(poly_modulus_degree);
+    params.set_coeff_modulus(seal::CoeffModulus::Create(poly_modulus_degree, { 60, 40, 40, 60 }));
+    seal::SecretKey secret_key;
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    secret_key = keyGen.secret_key();
+    std::cout << context.parameter_error_message() << std::endl;
+    std::ofstream privFileOut("privateKeyCKKS.pem", std::ios::binary);
+    secret_key.save(privFileOut);
+    std::cout << "Successfully saved private key." << std::endl;
+    privFileOut.close();
+
+    std::ofstream paramsFileOut("paramsCKKS.txt", std::ios::binary);
+    params.save(paramsFileOut);
+    std::cout << "Successfully saved parameters." << std::endl;
+    paramsFileOut.close();
+}
+void loadCKKSParams(seal::EncryptionParameters& params) {
+    std::ifstream paramsFileIn("paramsCKKS.txt", std::ios::binary);
+    params.load(paramsFileIn);
+    paramsFileIn.close();
+}
+void sendKeys(http_request request) {
+    try {
+        wcout << L"Key request received from IP: " << request.remote_address() << endl;
+        wstring uri = request.relative_uri().to_string();
+        wcout << uri << endl;
+        int length = stoi(uri.substr(1, uri.length()));
+        cout << "Length: " << length << endl;
+        wstring body = request.extract_utf16string().get();
+        string rsaKey = "";
+        for (int i = 0; i < length; ++i) {
+            int index = body.find_first_of(L",");
+            int toAdd = stoi(body.substr(0, index));
+            rsaKey.push_back(toAdd);
+            body = body.substr(index + 1, body.length());
+        }
+        cout << rsaKey << endl;
+        unsigned char* aesKey = new unsigned char[AES_BITS];
+        unsigned char* iv = new unsigned char[AES_BITS / 2];
+        string keyToEncrypt = "";
+        string ivToEncrypt = "";
+        GenerateAESKey(aesKey, iv);
+        
+        unsigned char* keyCopy = new unsigned char[AES_BITS];
+        unsigned char* ivCopy = new unsigned char[AES_BITS / 2];
+
+        memcpy(keyCopy, aesKey, AES_BITS);
+        memcpy(ivCopy, iv, AES_BITS / 2);
+        if (ipsAndIvs.find(request.get_remote_address()) != ipsAndIvs.end()|| ipsAndKeys.find(request.get_remote_address()) != ipsAndKeys.end()) {
+            cout << "This IP has already negotiated!" << endl;
+            request.reply(status_codes::BadRequest);
+        }
+        else {
+            ipsAndIvs.insert(make_pair(request.get_remote_address(), ivCopy));
+                ipsAndKeys.insert(make_pair(request.get_remote_address(), keyCopy));
+
+                for (int i = 0; i < AES_BITS; ++i) {
+                    int toAdd = (int)aesKey[i];
+                        keyToEncrypt += to_string(toAdd) + ",";
+                }
+            for (int i = 0; i < AES_BITS / 2; ++i) {
+                int toAdd = (int)iv[i];
+                ivToEncrypt += to_string(toAdd) + ",";
+            }
+            string toSend = RsaPubEncrypt(keyToEncrypt + "'" + ivToEncrypt, rsaKey);
+            request.reply(status_codes::OK, toSend).get();
+            cout << "Keys negotiated." << endl;
+        }
+    }
+    catch (exception& e) {
+        cout << e.what() << endl;
+        request.reply(status_codes::InternalError);
+    }
 }
 
+void serverLogin(http_request request) {
+    try {
+        int id = 1;
+        wstring ip = request.get_remote_address();
+        unsigned char* aesKey = ipsAndKeys.at(ip);
+        unsigned char* iv = ipsAndIvs.at(ip);
+        wstring uri = request.relative_uri().to_string();
+        uri = uri.substr(1, uri.length());
+        wstring body = request.extract_utf16string().get();
+        string idToCheck = aesDecrypt(uri, aesKey, iv);
+        string pinToCheck = aesDecrypt(body, aesKey, iv);
+        int idNum = 0;
+        try {
+            idNum = stoi(idToCheck);
+        }
+        catch (exception& e) {
+            wcout << "Invalid stoi on user ID: " << idNum << endl << endl;
+            request.reply(status_codes::BadRequest);
+        }
+        wcout << request.get_remote_address() << endl;
+        if (loggedIn.contains(idNum)) {
+            wcout << "Duplicate login attempt on account " << idNum << "." << endl << endl;
+            request._reply_if_not_already(status_codes::Conflict);
+        }
+        else {
+            Account* acc = dat->getAccount(idNum, *context);
+            if (acc == nullptr || idNum == 1) { // Checks to see if the account is null or the admin account.
+                cout << "Attempted login to the admin account." << endl << endl;
+                request._reply_if_not_already(status_codes::BadRequest);
+            }
+            else {
+                wstring actualPin = to_wstring(acc->getHashedPin());
+                wstring pin = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(pinToCheck);
+                if (pin.compare(actualPin) == 0) {
+                    loggedIn.insert(pair<int, wstring>(acc->getId(), request.get_remote_address()));
+                    wcout << "Account " << idNum << " logged in." << endl << endl;
+                    request._reply_if_not_already(status_codes::OK);
+                }
+                else {
+                    wcout << "Unsuccessful login attempt on account" << idNum << endl << endl;
+                    request._reply_if_not_already(status_codes::NotAcceptable);
+                }
+            }
+        }
+    }
+    catch (exception& e) {
+        cout << "Internal error occurred:" << endl;
+        cout << e.what() << endl << endl;
+        request.reply(status_codes::InternalError);
+    }
+}
 
+void serverLogout(http_request request) {
+    try {
+        wstring id = request.relative_uri().to_string();
+        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
+        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        id = id.substr(1, id.length());
+        int idNum = 0;
+        try {
+            idNum = stoi(aesDecrypt(id, aesKey, iv));
+        }
+        catch (exception& e) {
+            cout << "Invalid id number in stoi." << endl;
+            request.reply(status_codes::BadRequest);
+        }
+        if (loggedIn.contains(idNum)) {
+            if (loggedIn.at(idNum).compare(request.get_remote_address()) == 0) {
+                loggedIn.erase(idNum);
+                wcout << "Account " << idNum << " logged out." << endl << endl;
+                delete[] ipsAndIvs.at(request.get_remote_address());
+                delete[] ipsAndKeys.at(request.get_remote_address());
+                ipsAndIvs.erase(request.get_remote_address());
+                ipsAndKeys.erase(request.get_remote_address());
+                request.reply(status_codes::OK);
+            }
+            else {
+                wcout << "Attempted access to account " << idNum << " from a different IP." << endl << endl;
+                request.reply(status_codes::Forbidden);
+            }
+        }
+        else {
+            wcout << "Attempted access to invalid account ID " << idNum << "." << endl << endl;
+            request.reply(status_codes::Forbidden);
+        }
+    }
+    catch (exception& e) {
+        cout << "Internal error occurred:" << endl;
+        cout << e.what() << endl << endl;
+        request.reply(status_codes::InternalError);
+    }
+}
+
+void serverTransfer(http_request request) {
+    try {
+        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
+        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring uri = request.relative_uri().to_string();
+        uri = uri.substr(1, uri.length());
+        string decrypted = aesDecrypt(uri, aesKey, iv);
+        cout << decrypted << endl;
+        int index = decrypted.find_first_of(",");
+        int idTo = 1;
+        int idFrom = 1;
+        try {
+            idFrom = stoi(decrypted.substr(0, index));
+            idTo = stoi(decrypted.substr(index + 1, decrypted.length()));
+        }
+        catch (exception& e) {
+            cout << "Invalid account IDs" << endl;
+            request.reply(status_codes::BadRequest);
+        }
+        cout << "ID to: " << idTo << endl;
+        if (idTo == idFrom) {
+            cout << "Attempted sending of money from account " << idFrom << " to itself." << endl << endl;
+            request.reply(status_codes::BadRequest);
+        }
+        else {
+            Account* accFrom = dat->getAccount(idFrom, *context);
+            Account* accTo = dat->getAccount(idTo, *context);
+            if (accTo == nullptr) {
+                wcout << "Attempt to send money to invalid account with ID " << idTo << "." << endl << endl;
+                request.reply(status_codes::BadRequest);
+            }
+            else {
+                wstring amount = request.extract_utf16string().get();
+                double am = stod(aesDecrypt(amount, aesKey, iv));
+                cout << "Amount to transfer: " << am << endl;
+                if (loggedIn.contains(idFrom)) {
+                    if (loggedIn.at(idFrom).compare(request.get_remote_address()) == 0) {
+                        seal::CKKSEncoder encoder(*context);
+                        seal::SecretKey secret_key;
+                        string keyAddress = accFrom->getKeyAddress();
+                        cout << "Key address: " << keyAddress << endl;
+                        ifstream keyIn(keyAddress, std::ios::binary);
+                        secret_key.load(*context, keyIn);
+                        keyIn.close();
+                        seal::Encryptor encryptor(*context, secret_key);
+                        seal::Decryptor decryptor(*context, secret_key);
+                        seal::Plaintext plaintext;
+                        seal::Ciphertext ciphertext;
+                        double scale = pow(2, 20);
+                        encoder.encode(am, scale, plaintext);
+                        encryptor.encrypt_symmetric(plaintext, ciphertext);
+                        time_t nowTime = time(nullptr);
+                        cout << nowTime << endl;
+                        transactionID = dat->getTransactionID() + 1;
+                        wstring fileName = to_wstring(idFrom) + L"'" + to_wstring(idTo) + L"'" + to_wstring(transactionID) + L".txt";
+                        std::ofstream outFile(fileName, std::ios::binary);
+                        ciphertext.save(outFile);
+                        outFile.close();
+                        wstring balAddress = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress());
+                        vector<double> res;
+                        getAmount(balAddress, ciphertext);
+                        remove(std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(balAddress).c_str());
+                        decryptor.decrypt(ciphertext, plaintext);
+                        encoder.decode(plaintext, res);
+                        cout << fixed << setprecision(2) << res[0] - am << endl;
+                        if (am <= res[0] + accFrom->getOverdraft() && am > 0.00999) {
+                            http_client client2(L"http://localhost:8081/transfer");
+                            auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
+                            wstring toSendFile = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress()) + L"," + std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accTo->getBalanceAddress()) + L"," + fileName;
+                            auto response = client2.request(methods::PUT, toSendFile, f.streambuf());
+                            wcout << response.get().status_code();
+                            dat->logTransaction(accFrom, accTo, nowTime, transactionID);
+                            am = -am;
+                            encoder.encode(am, scale, plaintext);
+                            encryptor.encrypt_symmetric(plaintext, ciphertext);
+                            fileName = to_wstring(idTo) + L"'" + to_wstring(idFrom) + L"'" + to_wstring(transactionID) + L".txt";
+                            ofstream outFile2(fileName, std::ios::binary);
+                            ciphertext.save(outFile2);
+                            outFile2.close();
+                            f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
+                            response = client2.request(methods::POST, fileName, f.streambuf());
+                            cout << "Transferred successful from " << idFrom << " to " << idTo << " for amount " << (char)156 << -am << "." << endl << endl;
+                            delete[] aesKey;
+                            delete[] iv;
+                            request.reply(status_codes::OK);
+                        }
+                        else {
+                            cout << "Attempted transaction with invalid input." << endl << endl;
+                            request.reply(status_codes::Forbidden);
+                        }
+                    }
+                    else {
+                        wcout << "Attempted access to account " << idFrom << " from a different IP." << endl << endl;
+                        request.reply(status_codes::Conflict);
+                    }
+                }
+                else {
+                    wcout << "Attempted access to logged out account " << idFrom << "." << endl << endl;
+                    request.reply(status_codes::Conflict);
+                }
+            }
+        }
+    }
+    catch (exception& e) {
+        string errmsg = e.what();
+        if (errmsg.compare("invalid stoi argument") == 0 || errmsg.compare("invalid stod argument") == 0) {
+            request.reply(status_codes::BadRequest);
+            wcout << "Invalid input in transaction" << endl << endl;
+        }
+        else {
+            cout << "Internal error occurred." << endl;
+            cout << e.what() << endl << endl;;
+            request.reply(status_codes::InternalError);
+        }
+    }
+}
+
+void serverBalance(http_request request) {
+    try {
+        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
+        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring idTo = request.relative_uri().to_string();
+        idTo = idTo.substr(1, idTo.length());
+        wcout << idTo << endl;
+        string idToCheck = aesDecrypt(idTo, aesKey, iv);
+        cout << "Request for balance from: " << idToCheck << endl;
+        int id = 0;
+        try {
+            id = stoi(idToCheck);
+        }
+        catch (exception& e) {
+            cout << "Stoi error on id." << endl;
+            request.reply(status_codes::BadRequest);
+        }
+        if (loggedIn.contains(id)) {
+            if (loggedIn.at(id).compare(request.get_remote_address()) == 0) {
+                Account* account = dat->getAccount(id, *context);
+                cout << account->getBalanceAddress() << endl;
+                string keyAddress = account->getKeyAddress();
+                wstring balAddress = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(account->getBalanceAddress());
+                ifstream keyIn(keyAddress, std::ios::binary);
+                seal::SecretKey secret_key;
+                secret_key.load(*context, keyIn);
+                keyIn.close();
+                seal::Decryptor decryptor(*context, secret_key);
+                seal::CKKSEncoder encoder(*context);
+                seal::Ciphertext ciphertext;
+                seal::Plaintext plaintext;
+                vector<double> result;
+                getAmount(balAddress, ciphertext);
+                decryptor.decrypt(ciphertext, plaintext);
+                encoder.decode(plaintext, result);
+                string toEncrypt = to_string(result[0]);
+                wstring toSend = aesEncrypt(toEncrypt, aesKey, iv);
+                request.reply(status_codes::OK, toSend);
+                remove(std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(balAddress).c_str());
+            }
+            else {
+                wcout << "Attempted access to account " << idTo << " from a different IP." << endl << endl;
+                request._reply_if_not_already(status_codes::Forbidden);
+            }
+        }
+        else {
+            wcout << "Attempted access to logged out account " << idTo << "." << endl << endl;
+            request._reply_if_not_already(status_codes::Forbidden);
+        }
+    }
+    catch (exception& e) {
+        wcout << "Internal error occurred:" << endl;
+        cout << e.what() << endl << endl;
+        request.reply(status_codes::InternalError);
+    }
+}
+
+void serverHistory(http_request request) {
+    try {
+        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
+        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring idTo = request.relative_uri().to_string();
+        idTo = idTo.substr(1, idTo.length());
+        int id = 0;
+        try {
+            id = stoi(aesDecrypt(idTo, aesKey, iv));
+        }
+        catch (exception& e) {
+            request.reply(status_codes::BadRequest);
+        }
+        if (loggedIn.contains(id)) {
+            if (loggedIn.at(id).compare(request.get_remote_address()) == 0) {
+                TransactionList* transactions = dat->getTransactions(id, *context);
+                if (transactions == nullptr) {
+                    request.reply(status_codes::OK, L"No transactions have occurred.");
+                }
+                else {
+                    std::string details = "";
+                    for (Transaction* transaction : transactions->getTransactions()) {
+                        cout << "Amount address: " << transaction->getAmount() << endl;
+                        details += transaction->printTransaction();
+                        wstring balAddress = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(transaction->getAmount());
+                        Account* account = dat->getAccount(id, *context);
+                        seal::Ciphertext ciphertext;
+                        seal::Plaintext plaintext;
+                        vector<double> res;
+                        seal::SecretKey secret_key;
+                        ifstream keyIn(account->getKeyAddress(), std::ios::binary);
+                        secret_key.load(*context, keyIn);
+                        keyIn.close();
+                        seal::Decryptor decryptor(*context, secret_key);
+                        seal::CKKSEncoder encoder(*context);
+                        getAmount(balAddress, ciphertext);
+                        decryptor.decrypt(ciphertext, plaintext);
+                        encoder.decode(plaintext, res);
+                        std::stringstream ss;
+                        ss << fixed << setprecision(2) << abs(res[0]);
+                        string bal;
+                        ss >> bal;
+                        details += bal;
+                        details += "\n";
+                        transactions->removeTransaction(transaction);
+                    }
+                    cout << "Account " << id << " requested their transactions history." << endl << endl;
+                    wstring toSend = aesEncrypt(details, aesKey, iv);
+                    cout << "Done!" << endl;
+                    request.reply(status_codes::OK, toSend);
+                }
+            }
+        }
+        request._reply_if_not_already(status_codes::Forbidden);
+    }
+    catch (exception& e) {
+        cout << "Internal error occurred: " << endl;
+        cout << e.what() << endl << endl;
+        request.reply(status_codes::InternalError);
+    }
+}
+
+void serverDebits(http_request request) {
+    try {
+        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
+        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring idTo = request.relative_uri().to_string();
+        idTo = idTo.substr(1, idTo.length());
+        idTo = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(aesDecrypt(idTo, aesKey, iv));
+        int id = 0;
+        try {
+            id = stoi(idTo);
+        }
+        catch (exception& e) {
+            wcout << "Invalid stoi request on id " << idTo << endl;
+            request.reply(status_codes::BadRequest);
+        }
+        string details = "";
+        if (loggedIn.contains(id)) {
+            if (loggedIn.at(id).compare(request.get_remote_address()) == 0) {
+                DebitList* debits = dat->queryDebits(*context);
+                if (debits == nullptr) {
+                    details = "No debits exist on this account.\n";
+                }
+                else {
+                    int counter = 0;
+                    for (DirectDebit* debit : debits->getDebits()) {
+                        if (debit->getFrom()->getId() == id) {
+                            counter++;
+                            details += debit->printDebitInfo();
+                            seal::Ciphertext ciphertext;
+                            wstring balAddress = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(debit->getAmountAddress());
+                            getAmount(balAddress, ciphertext);
+                            seal::SecretKey secret_key;
+                            ifstream keyIn(debit->getFrom()->getKeyAddress(), std::ios::binary);
+                            secret_key.load(*context, keyIn);
+                            keyIn.close();
+                            seal::Plaintext plaintext;
+                            seal::CKKSEncoder encoder(*context);
+                            seal::Decryptor decryptor(*context, secret_key);
+                            vector<double> res;
+                            decryptor.decrypt(ciphertext, plaintext);
+                            encoder.decode(plaintext, res);
+                            std::stringstream ss;
+                            ss << fixed << setprecision(2) << abs(res[0]);
+                            string result;
+                            ss >> result;
+                            details += result;
+                            details += " \n";
+                            remove(std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(balAddress).c_str());
+                        }
+                    }
+                }
+                if (details.compare("") == 0) {
+                    details = "No debits exist on this account, mate.\n";
+                }
+                wstring toSend = aesEncrypt(details, aesKey, iv);
+                request.reply(status_codes::OK, toSend);
+            }
+        }
+        request._reply_if_not_already(status_codes::Forbidden);
+    }
+    catch (exception& e) {
+        cout << "Internal error occurred: " << endl;
+        cout << e.what() << endl << endl;
+        request.reply(status_codes::InternalError);
+    }
+}
+
+void serverAddDebits(http_request request) {
+    try {
+        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
+        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring idFrom = request.relative_uri().to_string();
+        idFrom = idFrom.substr(1, idFrom.length());
+
+        int id;
+        try {
+            id = stoi(aesDecrypt(idFrom, aesKey, iv));
+        }
+        catch (exception& e) {
+            cout << "Bad account ID conversion" << endl;
+            request._reply_if_not_already(status_codes::BadRequest);
+        }
+        if (loggedIn.contains(id)) {
+            if (loggedIn.at(id).compare(request.get_remote_address()) == 0) {
+                Account* from = dat->getAccount(id, *context);
+                wstring details = request.extract_utf16string().get();
+                string decrypted = aesDecrypt(details, aesKey, iv);
+                details = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(decrypted);
+                wcout << details << endl;
+                int index = details.find_first_of(L",");
+                wstring idString = details.substr(0, index);
+                details = details.substr(index + 1, details.length());
+                index = details.find_first_of(L",");
+                wstring regularity = details.substr(0, index);
+                details = details.substr(index + 1, details.length());
+                wstring amountString = details;
+                wcout << "ID: " << idString << endl;
+                wcout << "Regularity: " << regularity << endl;
+                wcout << "Amount: " << amountString << endl;
+                Account* to = nullptr;
+                try {
+                    to = dat->getAccount(stoi(idString), *context);
+                }
+                catch (exception& e) {
+                    cout << "Bad account ID conversion for send to request from account " << id << endl << endl;
+                    request._reply_if_not_already(status_codes::BadRequest);
+                }
+                cout << "About to check against debits" << endl;
+                auto debitList = dat->queryDebits(*context);
+                bool exists = false;
+                if (debitList != nullptr) {
+                    for (auto d : debitList->getDebits()) {
+                        if (d->getTo()->getId() == to->getId()) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                }
+                if (to == nullptr) {
+                    cout << "Attempting to send money to an invalid account." << endl;
+                    request._reply_if_not_already(status_codes::BadRequest);
+                }
+                else if (from->getId() == to->getId()) {
+                    cout << "User number " << id << " attempted to create a direct debit to themselves." << endl << endl;
+                    request._reply_if_not_already(status_codes::BadRequest);
+                }
+                else {
+                    cout << "About to create cron" << endl;
+                    string regString = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(regularity);
+                    cout << "Creating with expression: " << regString << endl << endl;
+                    cron::cronexpr expression;
+                    bool validCron = true;
+                    try {
+                        expression = cron::make_cron(regString);
+                    }
+                    catch (exception& e) {
+                        cout << "User " << id << " sent a bad cron expression." << endl << endl;
+                        request._reply_if_not_already(status_codes::BadRequest);
+                        validCron = false;
+                    }
+                    if (validCron) {
+                        seal::SecretKey secret_key;
+                        ifstream keyIn(from->getKeyAddress(), std::ios::binary);
+                        secret_key.load(*context, keyIn);
+                        keyIn.close();
+                        cout << "About to make direct debit pointer" << endl;
+                        seal::Encryptor encryptor(*context, secret_key);
+                        seal::CKKSEncoder encoder(*context);
+                        double amount = 0.0;
+                        try {
+                            amount = stod(amountString);
+                        }
+                        catch (exception& e) {
+                            cout << "Bad stod conversion on amount string from user " << id << endl << endl;
+                            request._reply_if_not_already(status_codes::BadRequest);
+                        }
+                        if (amount != 0.0) {
+                            double scale = pow(2, 20);
+                            seal::Plaintext plaintext;
+                            encoder.encode(amount, scale, plaintext);
+                            seal::Ciphertext ciphertext;
+                            encryptor.encrypt_symmetric(plaintext, ciphertext);
+                            time_t nowTime = time(nullptr);
+                            string address = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(idFrom) + "'" + std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(idString) + "'" + to_string(nowTime) + ".txt";
+                            ofstream outFile(address, std::ios::binary);
+                            ciphertext.save(outFile);
+                            outFile.close();
+                            wstring toSend = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
+                            http_client client(L"http://localhost:8081/debits");
+                            auto f = file_stream<char>::open_istream(toSend, std::ios::binary).get();
+                            auto response = client.request(methods::POST, toSend, f.streambuf());
+                            DirectDebit* debit = new DirectDebit(0, from, to, address, expression, nowTime);
+                            cout << "About to add direct debit to db" << endl;
+                            dat->addDebit(debit, regString, *context, *params);
+                            cout << "Direct debit added to account " << id << endl << endl;
+                            request._reply_if_not_already(status_codes::OK);
+                        }
+                    }
+                }
+            }
+        }
+        request.reply(status_codes::Forbidden);
+    }
+    catch (exception& e) {
+        cout << "Internal error occurred:" << endl;
+        cout << e.what() << endl << endl;
+        request.reply(status_codes::InternalError);
+    }
+}
+
+void serverRemoveDebit(http_request request) {
+    try {
+        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
+        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring idFrom = request.relative_uri().to_string();
+        idFrom = idFrom.substr(1, idFrom.length());
+        idFrom = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(aesDecrypt(idFrom, aesKey, iv));
+        wcout << idFrom << endl;
+        int id = 0;
+        try {
+            id = stoi(idFrom);
+        }
+        catch (exception& e) {
+            cout << "Invalid stoi from id" << endl;
+            request.reply(status_codes::BadRequest);
+        }
+        cout << id << endl;
+        if (loggedIn.contains(id)) {
+            if (loggedIn.at(id).compare(request.get_remote_address()) == 0) {
+                cout << "We are verified" << endl;
+                Account* acc = dat->getAccount(id, *context);
+                wstring debitId = request.extract_utf16string().get();
+                int deb = 0;
+                try {
+                    deb = stoi(aesDecrypt(debitId, aesKey, iv));
+                }
+                catch (exception& e) {
+                    cout << "Invalid stoi conversion on direct debit ID" << endl << endl;
+                    cout << "Invalid stoi conversion on direct debit ID" << endl << endl;
+                    request.reply(status_codes::BadRequest);
+                }
+                cout << "Debit ID: ";
+                cout << deb << endl;
+                DebitList* debits = dat->queryDebits(*context);
+                if (debits == nullptr) {
+                    request.reply(status_codes::NotFound);
+                }
+                else {
+                    for (DirectDebit* d : debits->getDebits())
+                    {
+                        if (d->getId() == deb) {
+                            if (d->getFrom()->getId() == id) {
+                                dat->removeDebit(d->getId());
+                                cout << "Removed from DB" << endl;
+                                std::string address = d->getAmountAddress();
+                                wstring add = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
+                                cout << address << endl;
+                                http_client client(L"http://localhost:8081/debits");
+                                auto response = client.request(methods::DEL, add);
+                                debits->removeDebit(d);
+                                remove(address.c_str());
+                                request._reply_if_not_already(status_codes::OK);
+                                break;
+                            }
+                        }
+                    }
+                    request._reply_if_not_already(status_codes::NotFound);
+                }
+            }
+        }
+        request._reply_if_not_already(status_codes::Forbidden);
+    }
+    catch (exception& e) {
+        cout << "Internal error occurred:" << endl;
+        cout << e.what() << endl;
+        request.reply(status_codes::InternalError);
+    }
+}
 
 int main()
 {
-    //seal::PublicKey public_key;
-    //seal::EncryptionParameters params;
-    //loadCKKSParams(params, public_key);
-    //seal::SEALContext context(params);
-    //seal::Plaintext p;
-    //seal::CKKSEncoder encoder(context);
-    //seal::Encryptor encryptor(context, public_key);
-    //seal::Ciphertext c;
-
-    //double scale = pow(2, 20);
-    //encoder.encode(1000.00, scale, p);
-    //encryptor.encrypt(p, c);
-    //std::ofstream out1("testCipher1.txt", std::ios::binary);
-    //std::ofstream out2("testCipher2.txt", std::ios::binary);
-    //c.save(out1);
-    //c.save(out2);
-    //out1.close();
-    //out2.close();
-    //std::cout << "Done!" << std::endl;
-
     try
     {
-        loadCKKSParams(*params, *public_key);
-        do {
-            seal::SEALContext con(*params);
-            context = new seal::SEALContext(con);
-        } while (false);
-        dat->connectToDB();
-        //http_listener listener(L"http://localhost:8080/restdemo");
+            ifstream getPri(PRI_KEY_FILE);
+            while (!getPri.eof()) {
+                priKey += getPri.get();
+            }
+            getPri.close();
+            ifstream getPub(PUB_KEY_FILE);
+            while (!getPub.eof()) {
+                pubKey += getPub.get();
+            }
 
-        //listener.support(methods::GET, handle_get);
-        //listener.support(methods::POST, handle_post);
-        //listener.support(methods::PUT, handle_put);
-        //listener.support(methods::DEL, handle_del);
+            cout << priKey << endl;
+            cout << pubKey << endl;
+            
+            loadCKKSParams(*params);
+            do {
+                seal::SEALContext con(*params);
+                context = new seal::SEALContext(con);
+            } while (false);
+            dat->connectToDB();
+            transactionID = dat->getTransactionID();
 
-        http_listener loginListener(L"http://localhost:8080/login");
-        loginListener.support(methods::PUT, serverLogin);
-        loginListener.support(methods::DEL, serverLogout);
+            http_listener loginListener(L"http://localhost:8080/login");
+            loginListener.support(methods::PUT, serverLogin);
+            loginListener.support(methods::DEL, serverLogout);
 
-        http_listener transactionListener(L"http://localhost:8080/transfer");
-        transactionListener.support(methods::POST, serverTransfer);
+            http_listener transactionListener(L"http://localhost:8080/transfer");
+            transactionListener.support(methods::POST, serverTransfer);
 
-        http_listener balanceListener(L"http://localhost:8080/balance");
-        transactionListener.support(methods::GET, serverBalance);
+            http_listener balanceListener(L"http://localhost:8080/balance");
+            transactionListener.support(methods::GET, serverBalance);
 
+            http_listener historyListener(L"http://localhost:8080/history");
+            historyListener.support(methods::GET, serverHistory);
 
-        //http_listener lis(L"http://localhost:8080/test");
+            http_listener debitListener(L"http://localhost:8080/debits");
+            debitListener.support(methods::GET, serverDebits);
+            debitListener.support(methods::POST, serverAddDebits);
+            debitListener.support(methods::DEL, serverRemoveDebit);
 
-        //lis.support(methods::PUT, test);
+            http_listener keyListener(L"http://localhost:8080/requestkey");
+            keyListener.support(methods::POST, sendKeys);
 
-//       listener
-//           .open()
-//            .then([&listener]() {wcout << (L"Starting to listen") << endl; })
-//            .wait();
+            loginListener
+                .open()
+                .then([&loginListener]() { wcout << (L"Starting to listen for logins") << endl; })
+                .wait();
 
-        loginListener
-            .open()
-            .then([&loginListener]() { wcout << (L"Starting to listen for logins") << endl; })
-            .wait();
+            transactionListener
+                .open()
+                .then([&transactionListener]() {wcout << (L"Starting to listen for transactions") << endl; })
+                .wait();
 
-        transactionListener
-            .open()
-            .then([&transactionListener]() {wcout << (L"Starting to listen for transactions") << endl; })
-            .wait();
+            balanceListener
+                .open()
+                .then([&balanceListener]() {wcout << (L"Starting to listen for balance requests") << endl; })
+                .wait();
 
-        balanceListener
-            .open()
-            .then([&balanceListener]() {wcout << (L"Starting to listen for balance requests") << endl; })
-            .wait();
+            historyListener
+                .open()
+                .then([&historyListener]() {wcout << (L"Starting to listen for history requests") << endl; })
+                .wait();
 
-        //lis
-        //    .open()
-        //    .then([&lis]() {wcout << (L"Starting to listen for aes test") << endl; })
-        //    .wait();
+            debitListener
+                .open()
+                .then([&debitListener]() {wcout << (L"Starting to listen for debit requests") << endl; })
+                .wait();
 
-        while (true);
+            keyListener
+                .open()
+                .then([&keyListener]() {wcout << ("Starting to listen for key exchanges") << endl; })
+                .wait();
+
+            while (true);
+            // original plaintext  
+            //std::string encrypt_text;
+            //std::string decrypt_text;
+
+            // Generate key pair
+ /*           std::string pub_key;
+            std::string pri_key;
+            ifstream getPri(PRI_KEY_FILE);
+            while (!getPri.eof()) {
+                pri_key += getPri.get();
+            }
+            getPri.close();
+            ifstream getPub(PUB_KEY_FILE);
+            while (!getPub.eof()) {
+                pub_key += getPub.get();
+            }*/
+
+        //    string src_text = "I like cheese";
+        //    printf("public key:\n");
+        //    printf("%s\n", pubKey.c_str());
+        //    printf("private key:\n");
+        //    printf("%s\n", priKey.c_str());
+
+        //    // Private key encryption-public key decryption
+        //    encrypt_text = RsaPriEncrypt(src_text, priKey);
+        //    printf("encrypt: len=%d\n", encrypt_text.length());
+        //    decrypt_text = RsaPubDecrypt(encrypt_text, pubKey);
+        //    printf("decrypt: len=%d\n", decrypt_text.length());
+        //    printf("decrypt: %s\n", decrypt_text.c_str());
+
+        //    // Public key encryption-private key decryption
+        //    encrypt_text = RsaPubEncrypt(src_text, pubKey);
+        //    printf("encrypt: len=%d\n", encrypt_text.length());
+        //    decrypt_text = RsaPriDecrypt(encrypt_text, priKey);
+        //    printf("decrypt: len=%d\n", decrypt_text.length());
+        //    printf("decrypt: %s\n", decrypt_text.c_str());
+
+        //    return 0;
+        //unsigned char* key = new unsigned char[1];
+        //unsigned char* iv = new unsigned char[1];
+        //GenerateAESKey(key, iv);
     }
     catch (exception const& e)
     {
