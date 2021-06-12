@@ -423,7 +423,6 @@ void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
     http_client client(L"http://ec2-3-80-64-123.compute-1.amazonaws.com:8081/balance");
     auto response = client.request(methods::GET, balAddress);
-    wcout << response.get().extract_utf16string().get() << endl;
     auto buf = response.get().body().streambuf();
     cout << response.get().status_code() << endl;
     string contents = "";

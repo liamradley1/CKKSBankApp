@@ -63,7 +63,7 @@ void transaction(http_request request) {
         // Extract the amount file from the request and create a file for storage
         auto buf = request.body().streambuf();
         string contents = "";
-        while (!buf.is_eof()) {
+        while (!buf.is_eof() && buf.getc().get() != -2) {
             contents += buf.sbumpc();
         }
         ofstream balOut(amountFile, std::ios::binary);
