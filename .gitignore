@@ -6,9 +6,7 @@
 .vs/project/v16/.suo
 Client/.vs/Client/v16/.suo
 *.recipe
-*.exe
 *.pdb
-*.obj
 *.ilk
 *.log
 *.tlog
@@ -23,8 +21,6 @@ Client/.vs/Client/v16/.suo
 *.vcxproj
 project/.vs/project/v16/.suo
 *.sln
-*.iobj
 *.ipdb
-*.dll
 Server/.vs/Server/v16/.suo
 Server/2'3'1621447833
