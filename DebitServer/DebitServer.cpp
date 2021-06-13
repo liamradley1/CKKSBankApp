@@ -40,7 +40,7 @@ static seal::SEALContext* context = new seal::SEALContext(NULL);
 
 void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
-    http_client client(L"http://ec2-54-82-78-133.compute-1.amazonaws.com:8081/balance");
+    http_client client(L"http://ec2-54-91-237-105.compute-1.amazonaws.com:8081/balance");
     auto response = client.request(methods::GET, balAddress);
     auto buf = response.get().body().streambuf();
     string contents = "";

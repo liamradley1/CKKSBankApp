@@ -666,77 +666,75 @@ int main()
     try {
         string pub_key;
         string priv_key;
-        while (true) {
-            GenerateRSAKey(pub_key, priv_key);
-            cout << priv_key << endl;
-            cout << pub_key << endl;
-            getKeys(pub_key, priv_key, aesKey, iv);
-            status_code code;
-            do {
-                cout << "Enter your account id." << endl;
-                string id;
-                string pin;
-                cout << "id: " << flush;
-                getline(cin, id);
-                cout << "pin: " << flush;
-                getline(cin, pin);
-                std::hash<int> hash;
-                size_t hashed;
-                int pinNum = 0;
-                try {
-                    pinNum = stoi(pin);
+        GenerateRSAKey(pub_key, priv_key);
+        cout << priv_key << endl;
+        cout << pub_key << endl;
+        getKeys(pub_key, priv_key, aesKey, iv);
+        status_code code;
+        do {
+            cout << "Enter your account id." << endl;
+            string id;
+            string pin;
+            cout << "id: " << flush;
+            getline(cin, id);
+            cout << "pin: " << flush;
+            getline(cin, pin);
+            std::hash<int> hash;
+            size_t hashed;
+            int pinNum = 0;
+            try {
+                pinNum = stoi(pin);
+            }
+            catch (exception& e) {
+                cout << "Invalid pin!" << endl;
+            }
+            if (pinNum != 0) {
+                hashed = hash(std::stoi(pin));
+                pin = to_string(hashed);
+                cout << hashed << endl;
+                wstring idToSend = aesEncrypt(id);
+                wstring pinToSend = aesEncrypt(pin);
+                code = sendLogin(idToSend, pinToSend);
+                if (code == status_codes::OK) {
+                    loggedID = wstring_convert < codecvt_utf8<wchar_t>>().from_bytes(id);
                 }
-                catch (exception& e) {
-                    cout << "Invalid pin!" << endl;
-                }
-                if (pinNum != 0) {
-                    hashed = hash(std::stoi(pin));
-                    pin = to_string(hashed);
-                    cout << hashed << endl;
-                    wstring idToSend = aesEncrypt(id);
-                    wstring pinToSend = aesEncrypt(pin);
-                    code = sendLogin(idToSend, pinToSend);
-                    if (code == status_codes::OK) {
-                        loggedID = wstring_convert < codecvt_utf8<wchar_t>>().from_bytes(id);
-                    }
-                }
-            } while (code != status_codes::OK);
-            int in = 0;
-            do {
-                cout << "What do you want to do?" << endl;
-                std::cout << "1: Make a transfer.\n2: Check balance.\n3: Check transaction history.\n4: Add or remove direct debits.\n5: Log out." << std::endl;
-                std::cout << "Choice: " << std::flush;
-                std::string input;
-                std::getline(std::cin, input);
-                try {
-                    in = stoi(input);
-                }
-                catch (exception& e) {
-                    cout << "Please enter a number when trying to perform actions." << endl;
-                }
-                switch (in) {
-                case 1:
-                    sendTransfer();
-                    break;
-                case 2:
-                    checkBalance();
-                    break;
-                case 3:
-                    checkHistory();
-                    break;
-                case 4:
-                    debitMenu();
-                    break;
-                case 5:
-                    std::cout << "Logging out..." << std::endl;
-                    sendLogout();
-                    break;
-                default:
-                    std::cout << "Invalid choice. Please try again." << std::endl;
-                    break;
-                }
-            } while (in != 5);
-        }
+            }
+        } while (code != status_codes::OK);
+        int in = 0;
+        do {
+            cout << "What do you want to do?" << endl;
+            std::cout << "1: Make a transfer.\n2: Check balance.\n3: Check transaction history.\n4: Add or remove direct debits.\n5: Log out." << std::endl;
+            std::cout << "Choice: " << std::flush;
+            std::string input;
+            std::getline(std::cin, input);
+            try {
+                in = stoi(input);
+            }
+            catch (exception& e) {
+                cout << "Please enter a number when trying to perform actions." << endl;
+            }
+            switch (in) {
+            case 1:
+                sendTransfer();
+                break;
+            case 2:
+                checkBalance();
+                break;
+            case 3:
+                checkHistory();
+                break;
+            case 4:
+                debitMenu();
+                break;
+            case 5:
+                std::cout << "Logging out..." << std::endl;
+                sendLogout();
+                break;
+            default:
+                std::cout << "Invalid choice. Please try again." << std::endl;
+                break;
+            }
+        } while (in != 5);
     }
     catch (exception& e) {
         cout << e.what() << endl;
