@@ -66,12 +66,15 @@ void transaction(http_request request) {
         while (!buf.is_eof() && buf.getc().get() != -2) {
             contents += buf.sbumpc();
         }
+        cout << "Writing balance to file" << endl;
         ofstream balOut(amountFile, std::ios::binary);
         balOut << contents;
         balOut.close();
+        cout << "Balance written in" << endl;
 
         // Extract the ciphertexts from balance and amount files
         seal::Ciphertext fromBal, toBal, amount;
+        cout << "Getting the balances" << endl;
         ifstream fromIn(fileFrom, std::ios::binary);
         fromBal.load(*context, fromIn);
         fromIn.close();
@@ -164,6 +167,7 @@ void directDebit(http_request request) {
     ofstream outFile(fileName, std::ios::binary);
     outFile << contents;
     outFile.close();
+    wcout << fileName << " created." << endl;
     request.reply(status_codes::OK);
 }
 

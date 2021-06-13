@@ -939,7 +939,7 @@ void serverAddDebits(http_request request) {
                 wstring details = request.extract_utf16string().get();
                 string decrypted = aesDecrypt(details, aesKey, iv);
                 details = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(decrypted);
-                wcout << details << endl;
+                wcout << L"Detail:" << details << endl;
                 int index = details.find_first_of(L",");
                 wstring idString = details.substr(0, index);
                 details = details.substr(index + 1, details.length());
@@ -999,9 +999,11 @@ void serverAddDebits(http_request request) {
                         cout << "About to make direct debit pointer" << endl;
                         seal::Encryptor encryptor(*context, secret_key);
                         seal::CKKSEncoder encoder(*context);
+                        cout << "Encryption stuff made" << endl;
                         double amount = 0.0;
                         try {
                             amount = stod(amountString);
+                            cout << "Amount: " << amount << endl;
                         }
                         catch (exception& e) {
                             cout << "Bad stod conversion on amount string from user " << id << endl << endl;
@@ -1014,19 +1016,28 @@ void serverAddDebits(http_request request) {
                             seal::Ciphertext ciphertext;
                             encryptor.encrypt_symmetric(plaintext, ciphertext);
                             time_t nowTime = time(nullptr);
-                            string address = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(idFrom) + "'" + std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(idString) + "'" + to_string(nowTime) + ".txt";
+                            string address = to_string(id) + "'" + std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(idString) + "'" + to_string(nowTime) + ".txt";
+                            cout << "About to save to address: " << address << endl;
                             ofstream outFile(address, std::ios::binary);
+                            cout << "Opened file" << address << endl;
                             ciphertext.save(outFile);
+                            cout << "Saved to file" << address << endl;
                             outFile.close();
+                            cout << "Amount encrypted" << endl;
+                            cout << "Put in file: " << address << endl;
                             wstring toSend = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
+                            wcout << L"To send: " << toSend << endl;
                             http_client client(L"http://ec2-54-91-237-105.compute-1.amazonaws.com:8081/debits");
                             auto f = file_stream<char>::open_istream(toSend, std::ios::binary).get();
                             auto response = client.request(methods::POST, toSend, f.streambuf());
-                            DirectDebit* debit = new DirectDebit(0, from, to, address, expression, nowTime);
-                            cout << "About to add direct debit to db" << endl;
-                            dat->addDebit(debit, regString, *context, *params);
-                            cout << "Direct debit added to account " << id << endl << endl;
-                            request._reply_if_not_already(status_codes::OK);
+                            if (response.get().status_code() == status_codes::OK) {
+                                DirectDebit* debit = new DirectDebit(0, from, to, address, expression, nowTime);
+                                cout << "About to add direct debit to db" << endl;
+                                dat->addDebit(debit, regString, *context, *params);
+                                cout << "Direct debit added to account " << to_string(id) << endl << endl;
+                                request._reply_if_not_already(status_codes::OK);
+                            }
+                            request._reply_if_not_already(status_codes::InternalError);
                         }
                     }
                 }
