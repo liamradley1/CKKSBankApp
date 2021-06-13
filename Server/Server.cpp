@@ -421,7 +421,7 @@ string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
 }
 void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
-    http_client client(L"http://ec2-54-91-237-105.compute-1.amazonaws.com:8081/balance");
+    http_client client(L"http://ec2-54-197-165-211.compute-1.amazonaws.com:8081/balance");
     auto response = client.request(methods::GET, balAddress);
     auto buf = response.get().body().streambuf();
     cout << response.get().status_code() << endl;
@@ -679,7 +679,7 @@ void serverTransfer(http_request request) {
                         encoder.decode(plaintext, res);
                         cout << fixed << setprecision(2) << res[0] - am << endl;
                         if (am <= res[0] + accFrom->getOverdraft() && am > 0.00999) {
-                            http_client client2(L"http://ec2-54-91-237-105.compute-1.amazonaws.com:8081/transfer");
+                            http_client client2(L"http://ec2-54-197-165-211.compute-1.amazonaws.com:8081/transfer");
                             auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
                             wstring toSendFile = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress()) + L"," + std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accTo->getBalanceAddress()) + L"," + fileName;
                             auto response = client2.request(methods::PUT, toSendFile, f.streambuf());
@@ -1028,7 +1028,7 @@ void serverAddDebits(http_request request) {
                             cout << "Put in file: " << address << endl;
                             wstring toSend = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
                             wcout << L"To send: " << toSend << endl;
-                            http_client client(L"http://ec2-54-91-237-105.compute-1.amazonaws.com:8081/debits");
+                            http_client client(L"http://ec2-54-197-165-211.compute-1.amazonaws.com:8081/debits");
                             auto f = file_stream<char>::open_istream(toSend, std::ios::binary).get();
                             auto response = client.request(methods::POST, toSend, f.streambuf());
                             if (response.get().status_code() == status_codes::OK) {
