@@ -1117,8 +1117,6 @@ void serverRemoveDebit(http_request request) {
 
 int main()
 {
-    try
-    {
         ifstream getPri(PRI_KEY_FILE);
         while (!getPri.eof()) {
             priKey += getPri.get();
@@ -1140,71 +1138,62 @@ int main()
         dat->connectToDB();
         transactionID = dat->getTransactionID();
         cout << "About to do the thing" << endl;
-        try {
-            cout << "Login" << endl;
-            http_listener loginListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/login");
-            loginListener.support(methods::PUT, serverLogin);
-            loginListener.support(methods::DEL, serverLogout);
+        cout << "Login" << endl;
+        http_listener loginListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/login");
+        loginListener.support(methods::PUT, serverLogin);
+        loginListener.support(methods::DEL, serverLogout);
 
-            cout << "Transactions" << endl;
-            http_listener transactionListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/transfer");
-            transactionListener.support(methods::POST, serverTransfer);
+        cout << "Transactions" << endl;
+        http_listener transactionListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/transfer");
+        transactionListener.support(methods::POST, serverTransfer);
 
-            cout << "Balance" << endl;
-            http_listener balanceListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/balance");
-            transactionListener.support(methods::GET, serverBalance);
+        cout << "Balance" << endl;
+        http_listener balanceListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/balance");
+        transactionListener.support(methods::GET, serverBalance);
 
-            cout << "History" << endl;
-            http_listener historyListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/history");
-            historyListener.support(methods::GET, serverHistory);
+        cout << "History" << endl;
+        http_listener historyListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/history");
+        historyListener.support(methods::GET, serverHistory);
 
-            cout << "Debit" << endl;
-            http_listener debitListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/debits");
-            debitListener.support(methods::GET, serverDebits);
-            debitListener.support(methods::POST, serverAddDebits);
-            debitListener.support(methods::DEL, serverRemoveDebit);
+        cout << "Debit" << endl;
+        http_listener debitListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/debits");
+        debitListener.support(methods::GET, serverDebits);
+        debitListener.support(methods::POST, serverAddDebits);
+        debitListener.support(methods::DEL, serverRemoveDebit);
 
-            cout << "Keys" << endl;
-            http_listener keyListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/requestkey");
-            keyListener.support(methods::POST, sendKeys);
+        cout << "Keys" << endl;
+        http_listener keyListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/requestkey");
+        keyListener.support(methods::POST, sendKeys);
 
-            loginListener
-                .open()
-                .then([&loginListener]() { wcout << (L"Starting to listen for logins") << endl; })
-                .wait();
+        loginListener
+            .open()
+            .then([&loginListener]() { wcout << (L"Starting to listen for logins") << endl; })
+            .wait();
 
-            transactionListener
-                .open()
-                .then([&transactionListener]() {wcout << (L"Starting to listen for transactions") << endl; })
-                .wait();
+        transactionListener
+            .open()
+            .then([&transactionListener]() {wcout << (L"Starting to listen for transactions") << endl; })
+            .wait();
 
-            balanceListener
-                .open()
-                .then([&balanceListener]() {wcout << (L"Starting to listen for balance requests") << endl; })
-                .wait();
+        balanceListener
+            .open()
+            .then([&balanceListener]() {wcout << (L"Starting to listen for balance requests") << endl; })
+            .wait();
 
-            historyListener
-                .open()
-                .then([&historyListener]() {wcout << (L"Starting to listen for history requests") << endl; })
-                .wait();
+        historyListener
+            .open()
+            .then([&historyListener]() {wcout << (L"Starting to listen for history requests") << endl; })
+            .wait();
 
-            debitListener
-                .open()
-                .then([&debitListener]() {wcout << (L"Starting to listen for debit requests") << endl; })
-                .wait();
+        debitListener
+            .open()
+            .then([&debitListener]() {wcout << (L"Starting to listen for debit requests") << endl; })
+            .wait();
 
-            keyListener
-                .open()
-                .then([&keyListener]() {wcout << ("Starting to listen for key exchanges") << endl; })
-                .wait();
-        }
-        catch (exception& e) {
-            cout << e.what() << endl;
-        }
-    }
-    catch (exception const& e)
-    {
-        wcout << e.what() << endl;
-    }
-    return 0;
+        keyListener
+            .open()
+            .then([&keyListener]() {wcout << ("Starting to listen for key exchanges") << endl; })
+            .wait();
+
+        while (true);
 }
