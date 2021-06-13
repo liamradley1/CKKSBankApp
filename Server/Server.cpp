@@ -421,7 +421,7 @@ string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
 }
 void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
-    http_client client(L"http://ec2-54-197-165-211.compute-1.amazonaws.com:8081/balance");
+    http_client client(L"http://ec2-54-159-19-84.compute-1.amazonaws.com:8081/balance");
     auto response = client.request(methods::GET, balAddress);
     auto buf = response.get().body().streambuf();
     cout << response.get().status_code() << endl;
@@ -679,7 +679,7 @@ void serverTransfer(http_request request) {
                         encoder.decode(plaintext, res);
                         cout << fixed << setprecision(2) << res[0] - am << endl;
                         if (am <= res[0] + accFrom->getOverdraft() && am > 0.00999) {
-                            http_client client2(L"http://ec2-54-197-165-211.compute-1.amazonaws.com:8081/transfer");
+                            http_client client2(L"http://ec2-54-159-19-84.compute-1.amazonaws.com:8081/transfer");
                             auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
                             wstring toSendFile = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress()) + L"," + std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accTo->getBalanceAddress()) + L"," + fileName;
                             auto response = client2.request(methods::PUT, toSendFile, f.streambuf());
@@ -1018,22 +1018,15 @@ void serverAddDebits(http_request request) {
                             encryptor.encrypt_symmetric(plaintext, ciphertext);
                             time_t nowTime = time(nullptr);
                             string address = to_string(id) + "'" + std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(idString) + "'" + to_string(nowTime) + ".txt";
-                            cout << "About to save to address: " << address << endl;
                             ofstream outFile(address, std::ios::binary);
-                            cout << "Opened file" << address << endl;
                             ciphertext.save(outFile);
-                            cout << "Saved to file" << address << endl;
                             outFile.close();
-                            cout << "Amount encrypted" << endl;
-                            cout << "Put in file: " << address << endl;
                             wstring toSend = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
-                            wcout << L"To send: " << toSend << endl;
-                            http_client client(L"http://ec2-54-197-165-211.compute-1.amazonaws.com:8081/debits");
+                            http_client client(L"http://ec2-54-159-19-84.compute-1.amazonaws.com:8081/debits");
                             auto f = file_stream<char>::open_istream(toSend, std::ios::binary).get();
                             auto response = client.request(methods::POST, toSend, f.streambuf());
                             if (response.get().status_code() == status_codes::OK) {
                                 DirectDebit* debit = new DirectDebit(0, from, to, address, expression, nowTime);
-                                cout << "About to add direct debit to db" << endl;
                                 dat->addDebit(debit, regString, *context, *params);
                                 cout << "Direct debit added to account " << to_string(id) << endl << endl;
                                 request._reply_if_not_already(status_codes::OK);
@@ -1100,7 +1093,7 @@ void serverRemoveDebit(http_request request) {
                                 std::string address = d->getAmountAddress();
                                 wstring add = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
                                 cout << address << endl;
-                                http_client client(L"http://ec2-54-91-237-105.compute-1.amazonaws.com:8081/debits");
+                                http_client client(L"http://ec2-54-159-19-84.compute-1.amazonaws.com:8081/debits");
                                 auto response = client.request(methods::DEL, add);
                                 debits->removeDebit(d);
                                 remove(address.c_str());
@@ -1147,25 +1140,25 @@ int main()
             dat->connectToDB();
             transactionID = dat->getTransactionID();
             cout << "About to do the thing" << endl;
-            http_listener loginListener(L"http://localhost:8080/login");
+            http_listener loginListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/login");
             loginListener.support(methods::PUT, serverLogin);
             loginListener.support(methods::DEL, serverLogout);
 
-            http_listener transactionListener(L"http://localhost:8080/transfer");
+            http_listener transactionListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/transfer");
             transactionListener.support(methods::POST, serverTransfer);
 
-            http_listener balanceListener(L"http://localhost:8080/balance");
+            http_listener balanceListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/balance");
             transactionListener.support(methods::GET, serverBalance);
 
-            http_listener historyListener(L"http://localhost:8080/history");
+            http_listener historyListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/history");
             historyListener.support(methods::GET, serverHistory);
 
-            http_listener debitListener(L"http://localhost:8080/debits");
+            http_listener debitListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/debits");
             debitListener.support(methods::GET, serverDebits);
             debitListener.support(methods::POST, serverAddDebits);
             debitListener.support(methods::DEL, serverRemoveDebit);
 
-            http_listener keyListener(L"http://localhost:8080/requestkey");
+            http_listener keyListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/requestkey");
             keyListener.support(methods::POST, sendKeys);
 
             loginListener
@@ -1197,49 +1190,6 @@ int main()
                 .open()
                 .then([&keyListener]() {wcout << ("Starting to listen for key exchanges") << endl; })
                 .wait();
-
-            while (true);
-            // original plaintext  
-            //std::string encrypt_text;
-            //std::string decrypt_text;
-
-            // Generate key pair
- /*           std::string pub_key;
-            std::string pri_key;
-            ifstream getPri(PRI_KEY_FILE);
-            while (!getPri.eof()) {
-                pri_key += getPri.get();
-            }
-            getPri.close();
-            ifstream getPub(PUB_KEY_FILE);
-            while (!getPub.eof()) {
-                pub_key += getPub.get();
-            }*/
-
-        //    string src_text = "I like cheese";
-        //    printf("public key:\n");
-        //    printf("%s\n", pubKey.c_str());
-        //    printf("private key:\n");
-        //    printf("%s\n", priKey.c_str());
-
-        //    // Private key encryption-public key decryption
-        //    encrypt_text = RsaPriEncrypt(src_text, priKey);
-        //    printf("encrypt: len=%d\n", encrypt_text.length());
-        //    decrypt_text = RsaPubDecrypt(encrypt_text, pubKey);
-        //    printf("decrypt: len=%d\n", decrypt_text.length());
-        //    printf("decrypt: %s\n", decrypt_text.c_str());
-
-        //    // Public key encryption-private key decryption
-        //    encrypt_text = RsaPubEncrypt(src_text, pubKey);
-        //    printf("encrypt: len=%d\n", encrypt_text.length());
-        //    decrypt_text = RsaPriDecrypt(encrypt_text, priKey);
-        //    printf("decrypt: len=%d\n", decrypt_text.length());
-        //    printf("decrypt: %s\n", decrypt_text.c_str());
-
-        //    return 0;
-        //unsigned char* key = new unsigned char[1];
-        //unsigned char* iv = new unsigned char[1];
-        //GenerateAESKey(key, iv);
     }
     catch (exception const& e)
     {
