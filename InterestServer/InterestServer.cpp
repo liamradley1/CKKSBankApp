@@ -40,7 +40,7 @@ static seal::SEALContext* context = new seal::SEALContext(NULL);
 
 void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
-    http_client client(L"http://localhost:8081/balance");
+    http_client client(L"http://ec2-54-82-78-133.compute-1.amazonaws.com:8081/balance");
     auto response = client.request(methods::GET, balAddress);
     auto buf = response.get().body().streambuf();
     string contents = "";
@@ -118,7 +118,7 @@ void runInterestSubroutine(DBHandler* dat) {
                         encryptor.encrypt_symmetric(interestPlain, interestCipher);
                         time_t nowTime = time(nullptr);
                         cout << "Current time: " << nowTime << endl;
-                        http_client transactionClient(L"http://localhost:8081/transfer");
+                        http_client transactionClient(L"http://ec2-54-82-78-133.compute-1.amazonaws.com:8081/transfer");
                         string outputAddress = std::to_string(1) + "'" + std::to_string(acc->getId()) + "'" + std::to_string(nowTime) + ".txt";
                         wstring wideAddress = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(outputAddress);
                         wstring from = L"admin.txt";

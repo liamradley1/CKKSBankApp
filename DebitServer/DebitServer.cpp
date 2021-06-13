@@ -40,7 +40,7 @@ static seal::SEALContext* context = new seal::SEALContext(NULL);
 
 void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
-    http_client client(L"http://localhost:8081/balance");
+    http_client client(L"http://ec2-54-82-78-133.compute-1.amazonaws.com:8081/balance");
     auto response = client.request(methods::GET, balAddress);
     auto buf = response.get().body().streambuf();
     string contents = "";
@@ -100,7 +100,7 @@ void processDebits(DBHandler* dat, TransactionHandler* tran) {
                     cout << "Account balance: " << bal << endl;
                     cout << "Amount to send: " << amount << endl;
                     if (bal + from->getOverdraft() > amount) {
-                        http_client client(L"http://localhost:8081/transfer");
+                        http_client client(L"http://ec2-54-82-78-133.compute-1.amazonaws.com:8081/transfer");
                         wstring wAddress = to_wstring(from->getId()) + L"'" + to_wstring(to->getId()) + L"'" + to_wstring(nowTime) + L".txt";
                         wcout << wAddress << endl;
                         std::ofstream outFile(address, std::ios::binary);

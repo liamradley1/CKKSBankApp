@@ -178,29 +178,34 @@ void deleteDebit(http_request request) {
 
 int main()
 {
-    loadCKKSParams(*params);
-    http_listener balanceListener(L"http://ec2-3-80-64-123.compute-1.amazonaws.com:8081/balance");
-    balanceListener.support(methods::GET, sendBalance);
-    balanceListener
-        .open()
-        .then([&balanceListener]() {wcout << (L"Starting to listen for balance requests") << endl; })
-        .wait();
+    try {
+        loadCKKSParams(*params);
+        http_listener balanceListener(L"http://ec2-54-82-78-133.compute-1.amazonaws.com:8081/balance");
+        balanceListener.support(methods::GET, sendBalance);
+        balanceListener
+            .open()
+            .then([&balanceListener]() {wcout << (L"Starting to listen for balance requests") << endl; })
+            .wait();
 
-    http_listener transferListener(L"http://ec2-3-80-64-123.compute-1.amazonaws.com:8081/transfer");
-    transferListener.support(methods::POST, additionalFile);
-    transferListener.support(methods::PUT, transaction);
-    transferListener
-        .open()
-        .then([&transferListener]() {wcout << (L"Starting to listen for transaction requests") << endl; })
-        .wait();
+        http_listener transferListener(L"http://ec2-54-82-78-133.compute-1.amazonaws.com:8081/transfer");
+        transferListener.support(methods::POST, additionalFile);
+        transferListener.support(methods::PUT, transaction);
+        transferListener
+            .open()
+            .then([&transferListener]() {wcout << (L"Starting to listen for transaction requests") << endl; })
+            .wait();
 
-    http_listener debitListener(L"http://ec2-3-80-64-123.compute-1.amazonaws.com:8081/debits");
-    debitListener.support(methods::POST, directDebit);
-    debitListener.support(methods::DEL, deleteDebit);
-    debitListener
-        .open()
-        .then([&debitListener]() {wcout << (L"Starting to listen for direct debit requests") << endl; })
-        .wait();
+        http_listener debitListener(L"http://ec2-54-82-78-133.compute-1.amazonaws.com:8081/debits");
+        debitListener.support(methods::POST, directDebit);
+        debitListener.support(methods::DEL, deleteDebit);
+        debitListener
+            .open()
+            .then([&debitListener]() {wcout << (L"Starting to listen for direct debit requests") << endl; })
+            .wait();
 
-    while (true);
+        while (true);
+    }
+    catch (exception& e) {
+        cout << e.what() << endl;
+    }
 }
