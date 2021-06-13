@@ -694,6 +694,7 @@ void serverTransfer(http_request request) {
                             outFile2.close();
                             f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
                             response = client2.request(methods::POST, fileName, f.streambuf());
+                            wcout << response.get().extract_utf16string().get() << endl;
                             cout << "Transferred successful from " << idFrom << " to " << idTo << " for amount " << (char)156 << -am << "." << endl << endl;
                             delete[] aesKey;
                             delete[] iv;

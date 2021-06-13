@@ -155,20 +155,26 @@ void additionalFile(http_request request) { // Provided the .txt file isn't a ma
 }
 
 void directDebit(http_request request) {
-    wstring fileName = request.relative_uri().to_string();
-    fileName = fileName.substr(1, fileName.length());
-    auto buf = request.body().streambuf();
-    string contents = "";
-    while (!buf.is_eof()) {
-        if (buf.getc().get() != -2) {
-            contents += buf.sbumpc();
+    try {
+        wstring fileName = request.relative_uri().to_string();
+        wcout << fileName << endl;
+        fileName = fileName.substr(1, fileName.length());
+        auto buf = request.body().streambuf();
+        string contents = "";
+        while (!buf.is_eof()) {
+            if (buf.getc().get() != -2) {
+                contents += buf.sbumpc();
+            }
         }
+        ofstream outFile(fileName, std::ios::binary);
+        outFile << contents;
+        outFile.close();
+        wcout << fileName << " created." << endl;
+        request.reply(status_codes::OK);
     }
-    ofstream outFile(fileName, std::ios::binary);
-    outFile << contents;
-    outFile.close();
-    wcout << fileName << " created." << endl;
-    request.reply(status_codes::OK);
+    catch (exception& e) {
+        cout << e.what() << endl;
+    }
 }
 
 void deleteDebit(http_request request) {
