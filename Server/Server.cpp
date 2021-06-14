@@ -1152,8 +1152,10 @@ void checkHeartbeats() {
                 ipsAndKeys.erase(key);
                 cout << "Forcibly logging out unresponsive account" << endl;
                 for (auto const& [key2, value2] : loggedIn) {
-                    if (value2.compare(key)) {
+                    if (value2.compare(key) == 0) {
                         loggedIn.erase(key2);
+                        ipsAndIvs.erase(key);
+                        ipsAndKeys.erase(key);
                         cout << "Logged out account " << to_string(key2) << endl;
                     }
                 }
