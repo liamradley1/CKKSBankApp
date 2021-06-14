@@ -475,6 +475,7 @@ status_code sendTransfer() {
     string toEncrypt = accFrom + "," + accountId;
     wstring ids = aesEncrypt(toEncrypt);
     wstring amountToSend = aesEncrypt(amount);
+    cout << amount << endl;
     http_client client(serverDNS + L":8080/transfer");
     auto response = client.request(methods::POST, ids, amountToSend).get();
     if (response.status_code() == status_codes::OK) {
