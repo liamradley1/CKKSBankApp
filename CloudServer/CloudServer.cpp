@@ -190,14 +190,14 @@ int main()
 {
     try {
         loadCKKSParams(*params);
-        http_listener balanceListener(L"http://ec2-54-159-19-84.compute-1.amazonaws.com:8081/balance");
+        http_listener balanceListener(L"http://ec2-100-24-9-219.compute-1.amazonaws.com:8081/balance");
         balanceListener.support(methods::GET, sendBalance);
         balanceListener
             .open()
             .then([&balanceListener]() {wcout << (L"Starting to listen for balance requests") << endl; })
             .wait();
 
-        http_listener transferListener(L"http://ec2-54-159-19-84.compute-1.amazonaws.com:8081/transfer");
+        http_listener transferListener(L"http://ec2-100-24-9-219.compute-1.amazonaws.com:8081/transfer");
         transferListener.support(methods::POST, additionalFile);
         transferListener.support(methods::PUT, transaction);
         transferListener
@@ -205,7 +205,7 @@ int main()
             .then([&transferListener]() {wcout << (L"Starting to listen for transaction requests") << endl; })
             .wait();
 
-        http_listener debitListener(L"http://ec2-54-159-19-84.compute-1.amazonaws.com:8081/debits");
+        http_listener debitListener(L"http://ec2-100-24-9-219.compute-1.amazonaws.com:8081/debits");
         debitListener.support(methods::POST, directDebit);
         debitListener.support(methods::DEL, deleteDebit);
         debitListener

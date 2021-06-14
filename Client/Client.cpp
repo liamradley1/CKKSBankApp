@@ -12,6 +12,7 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <croncpp/croncpp.h>
+#include <excpt.h>
 
 using namespace std;
 using namespace web;
@@ -738,6 +739,7 @@ int main()
     }
     catch (exception& e) {
         cout << e.what() << endl;
+        sendLogout();
     }
     delete[] aesKey;
     delete[] iv;
