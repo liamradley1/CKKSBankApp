@@ -677,6 +677,7 @@ void serverTransfer(http_request request) {
             }
             else {
                 wstring amount = request.extract_utf16string().get();
+                wcout << "Amount: " << amount << endl;
                 double am = 0.0;
                 try {
                     double am = stod(aesDecrypt(amount, aesKey, iv));
