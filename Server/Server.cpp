@@ -1153,25 +1153,25 @@ int main()
         } while (false);
         dat->connectToDB();
         transactionID = dat->getTransactionID();
-        http_listener loginListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/login");
+        http_listener loginListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/login");
         loginListener.support(methods::PUT, serverLogin);
         loginListener.support(methods::DEL, serverLogout);
 
-        http_listener transactionListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/transfer");
+        http_listener transactionListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/transfer");
         transactionListener.support(methods::POST, serverTransfer);
 
-        http_listener balanceListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/balance");
+        http_listener balanceListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/balance");
         transactionListener.support(methods::GET, serverBalance);
 
-        http_listener historyListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/history");
+        http_listener historyListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/history");
         historyListener.support(methods::GET, serverHistory);
 
-        http_listener debitListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/debits");
+        http_listener debitListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/debits");
         debitListener.support(methods::GET, serverDebits);
         debitListener.support(methods::POST, serverAddDebits);
         debitListener.support(methods::DEL, serverRemoveDebit);
 
-        http_listener keyListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/requestkey");
+        http_listener keyListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/requestkey");
         keyListener.support(methods::POST, sendKeys);
 
         loginListener
