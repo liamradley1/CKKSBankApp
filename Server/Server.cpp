@@ -1147,7 +1147,6 @@ void checkHeartbeats() {
         for (auto const& [ip, lastHeartbeat] : heartbeats) {
             wcout << ip << endl;
             if (lastHeartbeat < time(nullptr) - 15) {
-                heartbeats.erase(ip);
                 ipsAndIvs.erase(ip);
                 ipsAndKeys.erase(ip);
                 cout << "Forcibly logging out unresponsive account" << endl;
@@ -1157,6 +1156,7 @@ void checkHeartbeats() {
                     wcout << L"Other IP: " << ip << endl;
                     cout << "Comparison of IPS: " << ip2.compare(ip) << endl;
                     if (ip2.compare(ip) == 0) {
+                        heartbeats.erase(ip);
                         loggedIn.erase(id);
                         ipsAndIvs.erase(ip);
                         ipsAndKeys.erase(ip);
