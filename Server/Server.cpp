@@ -1135,6 +1135,11 @@ void serverRemoveDebit(http_request request) {
     }
 }
 
+void replyToHeartbeat(http_request request) {
+    wcout << L"Heartbeat received from " << request.get_remote_address() << endl;
+    request.reply(status_codes::OK);
+}
+
 int main()
 {
         try {
@@ -1179,6 +1184,10 @@ int main()
             http_listener keyListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/requestkey");
             keyListener.support(methods::POST, sendKeys);
 
+            http_listener heartbeatListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/heartbeat");
+            heartbeatListener.support(methods::GET, replyToHeartbeat);
+
+
             loginListener
                 .open()
                 .then([&loginListener]() { wcout << (L"Starting to listen for logins") << endl; })
@@ -1206,7 +1215,12 @@ int main()
 
             keyListener
                 .open()
-                .then([&keyListener]() {wcout << ("Starting to listen for key exchanges") << endl; })
+                .then([&keyListener]() {wcout << ("Starting to listen for client heartbeats") << endl; })
+                .wait();
+
+            heartbeatListener
+                .open()
+                .then([&heartbeatListener]() {wcout << ("Starting to listen for key exchanges") << endl; })
                 .wait();
             while (true);
             cout << "We keep trucking past here" << endl;

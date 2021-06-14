@@ -37,9 +37,6 @@ unsigned char* aesKey = new unsigned char[AES_BITS];
 /* A 128 bit IV */
 unsigned char* iv = new unsigned char[AES_BITS / 2];
 
-void replyToHeartbeat(http_request request) {
-    request.reply(status_codes::OK);
-}
 
 void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key)
 {
@@ -654,6 +651,11 @@ status_code debitMenu() {
     }
 }
 
+void heartbeat() {
+    http_client client(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/heartbeat");
+    _sleep(10000);
+}
+
 status_code sendLogout() {
     http_client client(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/login");
     string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
@@ -670,9 +672,6 @@ status_code sendLogout() {
 
 int main()
 {
-    http_listener heartbeatListener(L"http://localhost:8080/heartbeat");
-    heartbeatListener.support(methods::GET, replyToHeartbeat);
-
     try {
         string pub_key;
         string priv_key;
@@ -712,6 +711,7 @@ int main()
         } while (code != status_codes::OK);
         int in = 0;
         do {
+            std::thread heartbeatThread(heartbeat);
             cout << "What do you want to do?" << endl;
             std::cout << "1: Make a transfer.\n2: Check balance.\n3: Check transaction history.\n4: Add or remove direct debits.\n5: Log out." << std::endl;
             std::cout << "Choice: " << std::flush;
@@ -739,6 +739,7 @@ int main()
             case 5:
                 std::cout << "Logging out..." << std::endl;
                 sendLogout();
+                heartbeatThread.join();
                 break;
             default:
                 std::cout << "Invalid choice. Please try again." << std::endl;
