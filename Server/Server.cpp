@@ -1154,6 +1154,7 @@ void checkHeartbeats() {
                 for (auto const& [id, ip2] : loggedIn) {
                     cout << id << endl;
                     wcout << ip2 << endl;
+                    cout << ip2.compare(ip) << endl;
                     if (ip2.compare(ip) == 0) {
                         loggedIn.erase(id);
                         ipsAndIvs.erase(ip);
