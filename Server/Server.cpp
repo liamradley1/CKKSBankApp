@@ -603,6 +603,7 @@ void serverLogout(http_request request) {
                 delete[] ipsAndKeys.at(request.get_remote_address());
                 ipsAndIvs.erase(request.get_remote_address());
                 ipsAndKeys.erase(request.get_remote_address());
+                heartbeats.erase(request.get_remote_address());
                 request.reply(status_codes::OK);
             }
             else {
