@@ -50,10 +50,28 @@ int transactionID;
 string pubKey;
 string priKey;
 
+
 #define KEY_LENGTH 2048 // Key length
 #define AES_BITS 256 // AES Key length
 #define PUB_KEY_FILE "serverRSApub.pem" // RSA public key path
 #define PRI_KEY_FILE "serverRSApri.pem" // RSA private key path
+
+wstring readServerDNS() {
+    ifstream inFile("serverDNS.txt");
+    string location;
+    inFile >> location;
+    return wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(location);
+}
+
+wstring readCloudDNS() {
+    ifstream inFile("cloudDNS.txt");
+    string location;
+    inFile >> location;
+    return wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(location);
+}
+
+wstring serverDNS = readServerDNS();
+wstring cloudDNS = readCloudDNS();
 
 void GenerateAESKey(unsigned char* outAESKey, unsigned char* outAESIv) {
     unsigned char* key = new unsigned char[AES_BITS];
@@ -420,7 +438,7 @@ string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
 }
 void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
-    http_client client(L"http://ec2-52-90-156-60.compute-1.amazonaws.com:8081/balance");
+    http_client client(cloudDNS + L":8081/balance");
     auto response = client.request(methods::GET, balAddress);
     auto buf = response.get().body().streambuf();
     cout << response.get().status_code() << endl;
@@ -700,7 +718,7 @@ void serverTransfer(http_request request) {
                         encoder.decode(plaintext, res);
                         cout << fixed << setprecision(2) << res[0] - am << endl;
                         if (am <= res[0] + accFrom->getOverdraft() && am > 0.00999) {
-                            http_client client2(L"http://ec2-52-90-156-60.compute-1.amazonaws.com:8081/transfer");
+                            http_client client2(cloudDNS + L":8081/transfer");
                             auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
                             wstring toSendFile = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress()) + L"," + std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accTo->getBalanceAddress()) + L"," + fileName;
                             auto response = client2.request(methods::PUT, toSendFile, f.streambuf());
@@ -1043,7 +1061,7 @@ void serverAddDebits(http_request request) {
                             ciphertext.save(outFile);
                             outFile.close();
                             wstring toSend = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
-                            http_client client(L"http://ec2-52-90-156-60.compute-1.amazonaws.com:8081/debits");
+                            http_client client(cloudDNS + L":8081/debits");
                             auto f = file_stream<char>::open_istream(toSend, std::ios::binary).get();
                             auto response = client.request(methods::POST, toSend, f.streambuf());
                             if (response.get().status_code() == status_codes::OK) {
@@ -1115,7 +1133,7 @@ void serverRemoveDebit(http_request request) {
                                 wstring add = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
                                 cout << address << endl;
 
-                                http_client client(L"http://ec2-52-90-156-60.compute-1.amazonaws.com:8081/debits");
+                                http_client client(cloudDNS + L":8081/debits");
                                 auto response = client.request(methods::DEL, add);
                                 debits->removeDebit(d);
                                 remove(address.c_str());
@@ -1195,28 +1213,28 @@ int main()
             } while (false);
             dat->connectToDB();
             transactionID = dat->getTransactionID();
-            http_listener loginListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/login");
+            http_listener loginListener(serverDNS + L":8080/login");
             loginListener.support(methods::PUT, serverLogin);
             loginListener.support(methods::DEL, serverLogout);
 
-            http_listener transactionListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/transfer");
+            http_listener transactionListener(serverDNS + L":8080/transfer");
             transactionListener.support(methods::POST, serverTransfer);
 
-            http_listener balanceListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/balance");
+            http_listener balanceListener(serverDNS + L":8080/balance");
             transactionListener.support(methods::GET, serverBalance);
 
-            http_listener historyListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/history");
+            http_listener historyListener(serverDNS + L":8080/history");
             historyListener.support(methods::GET, serverHistory);
 
-            http_listener debitListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/debits");
+            http_listener debitListener(serverDNS + L":8080/debits");
             debitListener.support(methods::GET, serverDebits);
             debitListener.support(methods::POST, serverAddDebits);
             debitListener.support(methods::DEL, serverRemoveDebit);
 
-            http_listener keyListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/requestkey");
+            http_listener keyListener(serverDNS + L":8080/requestkey");
             keyListener.support(methods::POST, sendKeys);
 
-            http_listener heartbeatListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/heartbeat");
+            http_listener heartbeatListener(serverDNS + L":8080/heartbeat");
             heartbeatListener.support(methods::GET, replyToHeartbeat);
 
 

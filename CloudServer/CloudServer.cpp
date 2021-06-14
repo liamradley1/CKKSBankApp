@@ -25,6 +25,14 @@ using namespace std;
 static seal::EncryptionParameters* params = new seal::EncryptionParameters();
 static seal::SEALContext* context = new seal::SEALContext(NULL);
 
+
+wstring readCloudDNS() {
+    ifstream inFile("cloudDNS.txt");
+    string location;
+    inFile >> location;
+    return wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(location);
+}
+
 void loadCKKSParams(seal::EncryptionParameters& params) {
     std::ifstream paramsFileIn("paramsCKKS.txt", std::ios::binary);
     params.load(paramsFileIn);
@@ -189,15 +197,16 @@ void deleteDebit(http_request request) {
 int main()
 {
     try {
+        wstring cloudDNS = readCloudDNS();
         loadCKKSParams(*params);
-        http_listener balanceListener(L"http://ec2-52-90-156-60.compute-1.amazonaws.com:8081/balance");
+        http_listener balanceListener(cloudDNS + L":8081/balance");
         balanceListener.support(methods::GET, sendBalance);
         balanceListener
             .open()
             .then([&balanceListener]() {wcout << (L"Starting to listen for balance requests") << endl; })
             .wait();
 
-        http_listener transferListener(L"http://ec2-52-90-156-60.compute-1.amazonaws.com:8081/transfer");
+        http_listener transferListener(cloudDNS + L":8081/transfer");
         transferListener.support(methods::POST, additionalFile);
         transferListener.support(methods::PUT, transaction);
         transferListener
@@ -205,7 +214,7 @@ int main()
             .then([&transferListener]() {wcout << (L"Starting to listen for transaction requests") << endl; })
             .wait();
 
-        http_listener debitListener(L"http://ec2-52-90-156-60.compute-1.amazonaws.com:8081/debits");
+        http_listener debitListener(cloudDNS + L":8081/debits");
         debitListener.support(methods::POST, directDebit);
         debitListener.support(methods::DEL, deleteDebit);
         debitListener
