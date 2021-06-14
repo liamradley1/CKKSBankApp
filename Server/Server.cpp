@@ -1208,8 +1208,8 @@ int main()
                 .open()
                 .then([&keyListener]() {wcout << ("Starting to listen for key exchanges") << endl; })
                 .wait();
-
             while (true);
+            cout << "We keep trucking past here" << endl;
         }
         catch (exception& e) {
             cout << e.what() << endl;

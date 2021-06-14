@@ -13,11 +13,13 @@
 #include <openssl/pem.h>
 #include <croncpp/croncpp.h>
 #include <excpt.h>
+#include <cpprest/http_listener.h>
 
 using namespace std;
 using namespace web;
 using namespace web::http;
 using namespace web::http::client;
+using namespace web::http::experimental::listener;
 using namespace cron;
 
 using namespace concurrency::streams;
@@ -34,6 +36,10 @@ unsigned char* aesKey = new unsigned char[AES_BITS];
 
 /* A 128 bit IV */
 unsigned char* iv = new unsigned char[AES_BITS / 2];
+
+void replyToHeartbeat(http_request request) {
+    request.reply(status_codes::OK);
+}
 
 void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key)
 {
@@ -664,6 +670,9 @@ status_code sendLogout() {
 
 int main()
 {
+    http_listener heartbeatListener(L"http://localhost:8080/heartbeat");
+    heartbeatListener.support(methods::GET, replyToHeartbeat);
+
     try {
         string pub_key;
         string priv_key;
