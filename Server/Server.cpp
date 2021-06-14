@@ -1215,15 +1215,14 @@ int main()
 
             keyListener
                 .open()
-                .then([&keyListener]() {wcout << ("Starting to listen for client heartbeats") << endl; })
+                .then([&keyListener]() {wcout << ("Starting to listen for key exchanges") << endl; })
                 .wait();
 
             heartbeatListener
                 .open()
-                .then([&heartbeatListener]() {wcout << ("Starting to listen for key exchanges") << endl; })
+                .then([&heartbeatListener]() {wcout << ("Starting to listen for client heartbeats") << endl; })
                 .wait();
             while (true);
-            cout << "We keep trucking past here" << endl;
         }
         catch (exception& e) {
             cout << e.what() << endl;
