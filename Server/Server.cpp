@@ -421,7 +421,7 @@ string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
 }
 void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
-    http_client client(L"http://ec2-54-159-19-84.compute-1.amazonaws.com:8081/balance");
+    http_client client(L"http://ec2-100-24-9-219.compute-1.amazonaws.com:8081/balance");
     auto response = client.request(methods::GET, balAddress);
     auto buf = response.get().body().streambuf();
     cout << response.get().status_code() << endl;
@@ -493,11 +493,14 @@ void sendKeys(http_request request) {
 
         memcpy(keyCopy, aesKey, AES_BITS);
         memcpy(ivCopy, iv, AES_BITS / 2);
-        if (ipsAndIvs.find(request.get_remote_address()) != ipsAndIvs.end()|| ipsAndKeys.find(request.get_remote_address()) != ipsAndKeys.end()) {
-            cout << "This IP has already negotiated!" << endl;
-            request.reply(status_codes::BadRequest);
+        bool isLoggedIn = false;
+        for (auto const& [key, value] : loggedIn) {
+            if (value.compare(request.get_remote_address()) == 0) {
+                isLoggedIn = true;
+                break;
+            }
         }
-        else {
+        if(!isLoggedIn) {
             ipsAndIvs.insert(make_pair(request.get_remote_address(), ivCopy));
                 ipsAndKeys.insert(make_pair(request.get_remote_address(), keyCopy));
 
@@ -630,23 +633,34 @@ void serverTransfer(http_request request) {
         }
         catch (exception& e) {
             cout << "Invalid account IDs" << endl;
-            request.reply(status_codes::BadRequest);
+            request.reply(status_codes::BadRequest, L"Invalid account ID sent. Please try again.");
+        }
+        if (idTo == 1) {
+            cout << "Attempted sending of money from account " << idFrom << "to the admin account." << endl << endl;
+            request.reply(status_codes::BadRequest, L"Invalid recipient account selected. You cannot choose this account as a recipient.");
         }
         cout << "ID to: " << idTo << endl;
         if (idTo == idFrom) {
             cout << "Attempted sending of money from account " << idFrom << " to itself." << endl << endl;
-            request.reply(status_codes::BadRequest);
+            request.reply(status_codes::BadRequest, L"Invalid recipient account selected. You cannot choose this account as a recipient.");
         }
         else {
             Account* accFrom = dat->getAccount(idFrom, *context);
             Account* accTo = dat->getAccount(idTo, *context);
             if (accTo == nullptr) {
                 wcout << "Attempt to send money to invalid account with ID " << idTo << "." << endl << endl;
-                request.reply(status_codes::BadRequest);
+                request.reply(status_codes::BadRequest, L"Invalid recipient account selected. You cannot choose this account as a recipient.");
             }
             else {
                 wstring amount = request.extract_utf16string().get();
-                double am = stod(aesDecrypt(amount, aesKey, iv));
+                double am = 0.0;
+                try {
+                    double am = stod(aesDecrypt(amount, aesKey, iv));
+                }
+                catch (exception& e) {
+                    cout << "Unable to read the amount desired to be sent." << endl;
+                    request.reply(status_codes::BadRequest, L"Invalid amount to be sent.");
+                }
                 cout << "Amount to transfer: " << am << endl;
                 if (loggedIn.contains(idFrom)) {
                     if (loggedIn.at(idFrom).compare(request.get_remote_address()) == 0) {
@@ -679,7 +693,7 @@ void serverTransfer(http_request request) {
                         encoder.decode(plaintext, res);
                         cout << fixed << setprecision(2) << res[0] - am << endl;
                         if (am <= res[0] + accFrom->getOverdraft() && am > 0.00999) {
-                            http_client client2(L"http://ec2-54-159-19-84.compute-1.amazonaws.com:8081/transfer");
+                            http_client client2(L"http://ec2-100-24-9-219.compute-1.amazonaws.com:8081/transfer");
                             auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
                             wstring toSendFile = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress()) + L"," + std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accTo->getBalanceAddress()) + L"," + fileName;
                             auto response = client2.request(methods::PUT, toSendFile, f.streambuf());
@@ -702,7 +716,7 @@ void serverTransfer(http_request request) {
                         }
                         else {
                             cout << "Attempted transaction with invalid input." << endl << endl;
-                            request.reply(status_codes::Forbidden);
+                            request.reply(status_codes::BadRequest, L"Invalid input. Please try again.");
                         }
                     }
                     else {
@@ -1022,7 +1036,7 @@ void serverAddDebits(http_request request) {
                             ciphertext.save(outFile);
                             outFile.close();
                             wstring toSend = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
-                            http_client client(L"http://ec2-54-159-19-84.compute-1.amazonaws.com:8081/debits");
+                            http_client client(L"http://ec2-100-24-9-219.compute-1.amazonaws.com:8081/debits");
                             auto f = file_stream<char>::open_istream(toSend, std::ios::binary).get();
                             auto response = client.request(methods::POST, toSend, f.streambuf());
                             if (response.get().status_code() == status_codes::OK) {
@@ -1093,7 +1107,8 @@ void serverRemoveDebit(http_request request) {
                                 std::string address = d->getAmountAddress();
                                 wstring add = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
                                 cout << address << endl;
-                                http_client client(L"http://ec2-54-159-19-84.compute-1.amazonaws.com:8081/debits");
+
+                                http_client client(L"http://ec2-100-24-9-219.compute-1.amazonaws.com:8081/debits");
                                 auto response = client.request(methods::DEL, add);
                                 debits->removeDebit(d);
                                 remove(address.c_str());
@@ -1117,6 +1132,7 @@ void serverRemoveDebit(http_request request) {
 
 int main()
 {
+    try {
         ifstream getPri(PRI_KEY_FILE);
         while (!getPri.eof()) {
             priKey += getPri.get();
@@ -1137,31 +1153,24 @@ int main()
         } while (false);
         dat->connectToDB();
         transactionID = dat->getTransactionID();
-        cout << "About to do the thing" << endl;
-        cout << "Login" << endl;
         http_listener loginListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/login");
         loginListener.support(methods::PUT, serverLogin);
         loginListener.support(methods::DEL, serverLogout);
 
-        cout << "Transactions" << endl;
         http_listener transactionListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/transfer");
         transactionListener.support(methods::POST, serverTransfer);
 
-        cout << "Balance" << endl;
         http_listener balanceListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/balance");
         transactionListener.support(methods::GET, serverBalance);
 
-        cout << "History" << endl;
         http_listener historyListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/history");
         historyListener.support(methods::GET, serverHistory);
 
-        cout << "Debit" << endl;
         http_listener debitListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/debits");
         debitListener.support(methods::GET, serverDebits);
         debitListener.support(methods::POST, serverAddDebits);
         debitListener.support(methods::DEL, serverRemoveDebit);
 
-        cout << "Keys" << endl;
         http_listener keyListener(L"http://ec2-54-208-226-145.compute-1.amazonaws.com:8080/requestkey");
         keyListener.support(methods::POST, sendKeys);
 
@@ -1196,4 +1205,8 @@ int main()
             .wait();
 
         while (true);
+    }
+    catch (exception& e) {
+        cout << e.what() << endl;
+    }
 }
