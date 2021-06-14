@@ -501,8 +501,10 @@ void sendKeys(http_request request) {
             }
         }
         if(!isLoggedIn) {
+            ipsAndIvs.erase(request.get_remote_address());
+            ipsAndKeys.erase(request.get_remote_address());
             ipsAndIvs.insert(make_pair(request.get_remote_address(), ivCopy));
-                ipsAndKeys.insert(make_pair(request.get_remote_address(), keyCopy));
+            ipsAndKeys.insert(make_pair(request.get_remote_address(), keyCopy));
 
                 for (int i = 0; i < AES_BITS; ++i) {
                     int toAdd = (int)aesKey[i];
@@ -515,6 +517,9 @@ void sendKeys(http_request request) {
             string toSend = RsaPubEncrypt(keyToEncrypt + "'" + ivToEncrypt, rsaKey);
             request.reply(status_codes::OK, toSend).get();
             cout << "Keys negotiated." << endl;
+        }
+        else {
+            request.reply(status_codes::Forbidden, L"You're already logged in on this IP.");
         }
     }
     catch (exception& e) {
