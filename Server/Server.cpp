@@ -45,8 +45,7 @@ seal::SEALContext* context = new seal::SEALContext(NULL);
 map<int, wstring> loggedIn;
 map<wstring, unsigned char*> ipsAndKeys;
 map<wstring, unsigned char*> ipsAndIvs;
-map <wstring, unsigned char*> idsandKeys;
-map <wstring, unsigned char*> idsandIvs;
+map <wstring, int> heartbeats;
 int transactionID;
 string pubKey;
 string priKey;
@@ -1137,11 +1136,32 @@ void serverRemoveDebit(http_request request) {
 
 void replyToHeartbeat(http_request request) {
     wcout << L"Heartbeat received from " << request.get_remote_address() << endl;
+    heartbeats.at(request.get_remote_address()) = time(nullptr);
     request.reply(status_codes::OK);
+}
+
+void checkHeartbeats() {
+    for (auto const& [key, value] : heartbeats) {
+        if (value < time(nullptr) - 15) {
+            heartbeats.erase(key);
+            ipsAndIvs.erase(key);
+            ipsAndKeys.erase(key);
+            cout << "Forcibly logging out unresponsive account" << endl;
+            for (auto const& [key2, value2] : loggedIn) {
+                if (value2.compare(key)) {
+                    loggedIn.erase(key2);
+                    cout << "Logged out account " << to_string(key2) << endl;
+                }
+            }
+        }
+    }
+    _sleep(14800);
 }
 
 int main()
 {
+    std::thread heartbeatThread(checkHeartbeats);
+
         try {
             ifstream getPri(PRI_KEY_FILE);
             while (!getPri.eof()) {
@@ -1223,6 +1243,7 @@ int main()
                 .then([&heartbeatListener]() {wcout << ("Starting to listen for client heartbeats") << endl; })
                 .wait();
             while (true);
+            heartbeatThread.join();
         }
         catch (exception& e) {
             cout << e.what() << endl;

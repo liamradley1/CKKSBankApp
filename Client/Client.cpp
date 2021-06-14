@@ -652,8 +652,13 @@ status_code debitMenu() {
 }
 
 void heartbeat() {
-    http_client client(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/heartbeat");
-    _sleep(10000);
+    while (true) {
+        cout << "Sending heartbeat" << endl;
+        http_client client(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/heartbeat");
+        auto response = client.request(methods::GET).get();
+        cout << response.status_code() << endl;
+        _sleep(10000);
+    }
 }
 
 status_code sendLogout() {
@@ -710,8 +715,8 @@ int main()
             }
         } while (code != status_codes::OK);
         int in = 0;
+        std::thread heartbeatThread(heartbeat);
         do {
-            std::thread heartbeatThread(heartbeat);
             cout << "What do you want to do?" << endl;
             std::cout << "1: Make a transfer.\n2: Check balance.\n3: Check transaction history.\n4: Add or remove direct debits.\n5: Log out." << std::endl;
             std::cout << "Choice: " << std::flush;
