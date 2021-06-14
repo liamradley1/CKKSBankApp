@@ -420,7 +420,7 @@ string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
 }
 void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
-    http_client client(L"http://ec2-100-24-9-219.compute-1.amazonaws.com:8081/balance");
+    http_client client(L"http://ec2-52-90-156-60.compute-1.amazonaws.com:8081/balance");
     auto response = client.request(methods::GET, balAddress);
     auto buf = response.get().body().streambuf();
     cout << response.get().status_code() << endl;
@@ -562,7 +562,9 @@ void serverLogin(http_request request) {
                 wstring pin = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(pinToCheck);
                 if (pin.compare(actualPin) == 0) {
                     loggedIn.insert(pair<int, wstring>(acc->getId(), request.get_remote_address()));
+                    heartbeats.insert(make_pair(request.get_remote_address(), time(nullptr)));
                     wcout << "Account " << idNum << " logged in." << endl << endl;
+
                     request._reply_if_not_already(status_codes::OK);
                 }
                 else {
@@ -697,7 +699,7 @@ void serverTransfer(http_request request) {
                         encoder.decode(plaintext, res);
                         cout << fixed << setprecision(2) << res[0] - am << endl;
                         if (am <= res[0] + accFrom->getOverdraft() && am > 0.00999) {
-                            http_client client2(L"http://ec2-100-24-9-219.compute-1.amazonaws.com:8081/transfer");
+                            http_client client2(L"http://ec2-52-90-156-60.compute-1.amazonaws.com:8081/transfer");
                             auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
                             wstring toSendFile = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress()) + L"," + std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accTo->getBalanceAddress()) + L"," + fileName;
                             auto response = client2.request(methods::PUT, toSendFile, f.streambuf());
@@ -1040,7 +1042,7 @@ void serverAddDebits(http_request request) {
                             ciphertext.save(outFile);
                             outFile.close();
                             wstring toSend = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
-                            http_client client(L"http://ec2-100-24-9-219.compute-1.amazonaws.com:8081/debits");
+                            http_client client(L"http://ec2-52-90-156-60.compute-1.amazonaws.com:8081/debits");
                             auto f = file_stream<char>::open_istream(toSend, std::ios::binary).get();
                             auto response = client.request(methods::POST, toSend, f.streambuf());
                             if (response.get().status_code() == status_codes::OK) {
@@ -1112,7 +1114,7 @@ void serverRemoveDebit(http_request request) {
                                 wstring add = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(address);
                                 cout << address << endl;
 
-                                http_client client(L"http://ec2-100-24-9-219.compute-1.amazonaws.com:8081/debits");
+                                http_client client(L"http://ec2-52-90-156-60.compute-1.amazonaws.com:8081/debits");
                                 auto response = client.request(methods::DEL, add);
                                 debits->removeDebit(d);
                                 remove(address.c_str());
@@ -1141,21 +1143,24 @@ void replyToHeartbeat(http_request request) {
 }
 
 void checkHeartbeats() {
-    for (auto const& [key, value] : heartbeats) {
-        if (value < time(nullptr) - 15) {
-            heartbeats.erase(key);
-            ipsAndIvs.erase(key);
-            ipsAndKeys.erase(key);
-            cout << "Forcibly logging out unresponsive account" << endl;
-            for (auto const& [key2, value2] : loggedIn) {
-                if (value2.compare(key)) {
-                    loggedIn.erase(key2);
-                    cout << "Logged out account " << to_string(key2) << endl;
+    while (true) {
+        for (auto const& [key, value] : heartbeats) {
+            wcout << key << endl;
+            if (value < time(nullptr) - 15) {
+                heartbeats.erase(key);
+                ipsAndIvs.erase(key);
+                ipsAndKeys.erase(key);
+                cout << "Forcibly logging out unresponsive account" << endl;
+                for (auto const& [key2, value2] : loggedIn) {
+                    if (value2.compare(key)) {
+                        loggedIn.erase(key2);
+                        cout << "Logged out account " << to_string(key2) << endl;
+                    }
                 }
             }
         }
+        _sleep(14800);
     }
-    _sleep(14800);
 }
 
 int main()
@@ -1183,28 +1188,28 @@ int main()
             } while (false);
             dat->connectToDB();
             transactionID = dat->getTransactionID();
-            http_listener loginListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/login");
+            http_listener loginListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/login");
             loginListener.support(methods::PUT, serverLogin);
             loginListener.support(methods::DEL, serverLogout);
 
-            http_listener transactionListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/transfer");
+            http_listener transactionListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/transfer");
             transactionListener.support(methods::POST, serverTransfer);
 
-            http_listener balanceListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/balance");
+            http_listener balanceListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/balance");
             transactionListener.support(methods::GET, serverBalance);
 
-            http_listener historyListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/history");
+            http_listener historyListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/history");
             historyListener.support(methods::GET, serverHistory);
 
-            http_listener debitListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/debits");
+            http_listener debitListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/debits");
             debitListener.support(methods::GET, serverDebits);
             debitListener.support(methods::POST, serverAddDebits);
             debitListener.support(methods::DEL, serverRemoveDebit);
 
-            http_listener keyListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/requestkey");
+            http_listener keyListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/requestkey");
             keyListener.support(methods::POST, sendKeys);
 
-            http_listener heartbeatListener(L"http://ec2-54-152-139-101.compute-1.amazonaws.com:8080/heartbeat");
+            http_listener heartbeatListener(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/heartbeat");
             heartbeatListener.support(methods::GET, replyToHeartbeat);
 
 
