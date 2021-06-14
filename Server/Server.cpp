@@ -677,11 +677,9 @@ void serverTransfer(http_request request) {
             }
             else {
                 wstring amount = request.extract_utf16string().get();
-                string a = aesDecrypt(amount, aesKey, iv);
-                cout << "Amount: " << a << endl;
                 double am = 0.0;
                 try {
-                    double am = stod(aesDecrypt(amount, aesKey, iv));
+                    am = stod(aesDecrypt(amount, aesKey, iv));
                 }
                 catch (exception& e) {
                     cout << "Unable to read the amount desired to be sent." << endl;
