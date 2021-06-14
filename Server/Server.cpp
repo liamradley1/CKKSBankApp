@@ -449,7 +449,6 @@ void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     }
     cout << "About to write to file" << endl;
     ofstream outFile(balAddress, std::ios::binary);
-    cout << contents << endl;
     outFile << contents;
     outFile.close();
     ifstream inFile(balAddress, std::ios::binary | std::ios::beg);
