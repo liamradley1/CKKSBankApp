@@ -389,7 +389,7 @@ string aesDecrypt(wstring input) {
 
 web::http::status_code getKeys(string pubKey, string priKey, unsigned char* aesKey, unsigned char* iv) {
     try {
-        http_client client(L"ec2-3-88-37-43.compute-1.amazonaws.com:8080/requestkey");
+        http_client client(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/requestkey");
         wstring toSend = L"";
         for (int i = 0; i < pubKey.length(); ++i) {
             int converted = (int)pubKey.at(i);
@@ -435,7 +435,7 @@ web::http::status_code getKeys(string pubKey, string priKey, unsigned char* aesK
 }
 
 web::http::status_code sendLogin(wstring id, wstring pin) {
-    http_client client(L"ec2-3-88-37-43.compute-1.amazonaws.com:8080/login");
+    http_client client(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/login");
     cout << "Sending..." << endl;
     auto response = client.request(methods::PUT, id, pin).get();
     cout << response.status_code() << endl;
@@ -471,7 +471,7 @@ status_code sendTransfer() {
     string toEncrypt = accFrom + "," + accountId;
     wstring ids = aesEncrypt(toEncrypt);
     wstring amountToSend = aesEncrypt(amount);
-    http_client client(L"ec2-3-88-37-43.compute-1.amazonaws.com:8080/transfer");
+    http_client client(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/transfer");
     auto response = client.request(methods::POST, ids, amountToSend).get();
     if (response.status_code() == status_codes::OK) {
         cout << "Transfer successful!" << endl;
@@ -493,7 +493,7 @@ status_code sendTransfer() {
 
 status_code checkBalance() {
     try {
-        http_client client(L"ec2-3-88-37-43.compute-1.amazonaws.com:8080/transfer");
+        http_client client(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/transfer");
         string toEnc = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
         wstring toSend = aesEncrypt(toEnc);
         auto response = client.request(methods::GET, toSend).get();
@@ -514,7 +514,7 @@ status_code checkBalance() {
 }
 
 status_code checkHistory() {
-    http_client client(L"ec2-3-88-37-43.compute-1.amazonaws.com:8080/history");
+    http_client client(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/history");
     string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
     wstring toSend = aesEncrypt(toEncrypt);
     auto response = client.request(methods::GET, toSend).get();
@@ -531,7 +531,7 @@ status_code checkHistory() {
 }
 
 status_code addDebit() {
-    http_client client(L"ec2-3-88-37-43.compute-1.amazonaws.com:8080/debits");
+    http_client client(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/debits");
     try {
         std::string idTo;
         int intIdTo;
@@ -605,7 +605,7 @@ status_code addDebit() {
 }
 
 void viewDebits() {
-    http_client client(L"ec2-3-88-37-43.compute-1.amazonaws.com:8080/debits");
+    http_client client(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/debits");
     string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
     wstring toSend = aesEncrypt(toEncrypt);
     auto response = client.request(methods::GET, toSend);
@@ -618,7 +618,7 @@ void removeDebit() {
     cout << "Which debit ID would you like to remove?" << endl;
     string input = "";
     getline(cin, input);
-    http_client client(L"ec2-3-88-37-43.compute-1.amazonaws.com:8080/debits");
+    http_client client(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/debits");
     wstring toSend = aesEncrypt(input);
     wstring idToSend = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID));
     auto response = client.request(methods::DEL, idToSend, toSend).get();
@@ -652,17 +652,17 @@ status_code debitMenu() {
 }
 
 void heartbeat() {
-    while (true) {
-        cout << "Sending heartbeat" << endl;
-        http_client client(L"ec2-3-88-37-43.compute-1.amazonaws.com:8080/heartbeat");
-        auto response = client.request(methods::GET).get();
-        cout << response.status_code() << endl;
-        _sleep(10000);
+    while(true) {
+    cout << "Sending heartbeat" << endl;
+    http_client client(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/heartbeat");
+    auto response = client.request(methods::GET).get();
+    cout << response.status_code() << endl;
+    _sleep(10000);
     }
 }
 
 status_code sendLogout() {
-    http_client client(L"ec2-3-88-37-43.compute-1.amazonaws.com:8080/login");
+    http_client client(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/login");
     string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
     wstring toSend = aesEncrypt(toEncrypt);
     auto response = client.request(methods::DEL, toSend).get();
