@@ -1152,9 +1152,10 @@ void checkHeartbeats() {
                 ipsAndKeys.erase(ip);
                 cout << "Forcibly logging out unresponsive account" << endl;
                 for (auto const& [id, ip2] : loggedIn) {
-                    cout << id << endl;
-                    wcout << ip2 << endl;
-                    cout << ip2.compare(ip) << endl;
+                    cout <<"ID: " << id << endl;
+                    wcout <<L"IP: " << ip2 << endl;
+                    wcout << L"Other IP: " << ip << endl;
+                    cout << "Comparison of IPS: " << ip2.compare(ip) << endl;
                     if (ip2.compare(ip) == 0) {
                         loggedIn.erase(id);
                         ipsAndIvs.erase(ip);
