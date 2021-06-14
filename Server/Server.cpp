@@ -1144,19 +1144,21 @@ void replyToHeartbeat(http_request request) {
 
 void checkHeartbeats() {
     while (true) {
-        for (auto const& [key, value] : heartbeats) {
-            wcout << key << endl;
-            if (value < time(nullptr) - 15) {
-                heartbeats.erase(key);
-                ipsAndIvs.erase(key);
-                ipsAndKeys.erase(key);
+        for (auto const& [ip, lastHeartbeat] : heartbeats) {
+            wcout << ip << endl;
+            if (lastHeartbeat < time(nullptr) - 15) {
+                heartbeats.erase(ip);
+                ipsAndIvs.erase(ip);
+                ipsAndKeys.erase(ip);
                 cout << "Forcibly logging out unresponsive account" << endl;
-                for (auto const& [key2, value2] : loggedIn) {
-                    if (value2.compare(key) == 0) {
-                        loggedIn.erase(key2);
-                        ipsAndIvs.erase(key);
-                        ipsAndKeys.erase(key);
-                        cout << "Logged out account " << to_string(key2) << endl;
+                for (auto const& [id, ip2] : loggedIn) {
+                    cout << id << endl;
+                    wcout << ip2 << endl;
+                    if (ip2.compare(ip) == 0) {
+                        loggedIn.erase(id);
+                        ipsAndIvs.erase(ip);
+                        ipsAndKeys.erase(ip);
+                        cout << "Logged out account " << to_string(id) << endl;
                     }
                 }
             }

@@ -652,7 +652,7 @@ status_code debitMenu() {
 }
 
 void heartbeat() {
-    while(true) {
+    while(loggedID.compare(L"") != 0) {
     cout << "Sending heartbeat" << endl;
     http_client client(L"http://ec2-3-88-37-43.compute-1.amazonaws.com:8080/heartbeat");
     auto response = client.request(methods::GET).get();
@@ -668,6 +668,7 @@ status_code sendLogout() {
     auto response = client.request(methods::DEL, toSend).get();
     if (response.status_code() == status_codes::OK) {
         cout << "Logged out!" << endl;
+        loggedID = L"";
     }
     else {
         cout << "Something went wrong!" << endl;
