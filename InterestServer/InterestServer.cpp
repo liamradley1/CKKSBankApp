@@ -101,9 +101,7 @@ void runInterestSubroutine(DBHandler* dat) {
                     seal::Evaluator eval(*context);
                     seal::Decryptor decryptor(*context, secret_key);
                     seal::CKKSEncoder encoder(*context);
-                    cout << "Encryption stuff set up" << endl;
                     string balAddress = acc->getBalanceAddress();
-
                     seal::Ciphertext balanceCipher;
                     wstring wBalAddress = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(balAddress);
                     getAmount(wBalAddress, balanceCipher);
@@ -175,6 +173,11 @@ int main()
     }
     catch (exception& e) {
         cout << e.what() << endl;
-        exit(1);
     }
+    delete transactions;
+    delete debits;
+    delete tran;
+    delete dat;
+    delete params;
+    delete context;
 }

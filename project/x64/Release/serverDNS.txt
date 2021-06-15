@@ -1,1 +1,1 @@
-http://ec2-34-228-82-11.compute-1.amazonaws.com
+http://localhost

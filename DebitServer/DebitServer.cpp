@@ -137,7 +137,10 @@ void processDebits(DBHandler* dat, TransactionHandler* tran) {
                         std::wcout << "Deleting direct debit " << d->getId() << " as user " << from->getId() << " does not have the sufficient balance" << endl << endl;
                         dat->removeDebit(d->getId());
                     }
+                    delete from;
+                    delete to;
                 }
+                debitList->removeDebit(d);
             }
             _sleep(999);
         }
@@ -174,6 +177,11 @@ int main()
     }
     catch (exception& e) {
         cout << e.what() << endl;
-        exit(1);
     }
+    delete transactions;
+    delete debits;
+    delete tran;
+    delete dat;
+    delete params;
+    delete context;
 }
