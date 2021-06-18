@@ -27,6 +27,9 @@
 #include <sstream>
 #include <utility>
 #pragma comment(lib, "cpprest_2_10")
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
 
 using namespace web;
 using namespace web::http;
@@ -89,7 +92,7 @@ void GenerateAESKey(unsigned char* outAESKey, unsigned char* outAESIv) {
     cout << "IV: " << endl;
     for (int i = 0; i < AES_BITS / 2; ++i) {
         cout << (int)outAESIv[i];
-    }cout << endl;
+    }
     cout << endl;
 }
 void handleErrors(void)
@@ -494,7 +497,7 @@ void loadCKKSParams(seal::EncryptionParameters& params) {
     params.load(paramsFileIn);
     paramsFileIn.close();
 }
-void sendKeys(http_request request) {
+bool sendKeys(http_request request) {
     try {
         wcout << L"Key request received from IP: " << request.remote_address() << endl;
         wstring uri = request.relative_uri().to_string();
@@ -515,15 +518,12 @@ void sendKeys(http_request request) {
         string keyToEncrypt = "";
         string ivToEncrypt = "";
         GenerateAESKey(aesKey, iv);
-        bool isLoggedIn = false;
         for (auto const& [key, value] : loggedIn) {
             if (value.compare(request.get_remote_address()) == 0) {
-                isLoggedIn = true;
-                break;
+                request.reply(status_codes::Forbidden, L"You are already logged in on this IP.");
+                return false;
             }
         }
-        cout << isLoggedIn << false << true << endl;
-        if (!isLoggedIn) {
             ipsAndIvs.erase(request.get_remote_address());
             ipsAndKeys.erase(request.get_remote_address());
             ipsAndIvs.insert(make_pair(request.get_remote_address(), iv));
@@ -539,25 +539,40 @@ void sendKeys(http_request request) {
             }
             string toSend = RsaPubEncrypt(keyToEncrypt + "'" + ivToEncrypt, rsaKey);
             request.reply(status_codes::OK, toSend).get();
-            cout << "Keys negotiated." << endl;
-        }
-        else {
-            wcout << "Already logged in on IP: " << request.get_remote_address() << endl;
-            request.reply(status_codes::Forbidden, L"You're already logged in on this IP.");
-        }
+            wcout << L"Keys negotiated for IP " << request.get_remote_address() << endl;
+            return true;
     }
     catch (exception& e) {
         cout << e.what() << endl;
         request.reply(status_codes::InternalError);
+        return false;
     }
 }
-
-void serverLogin(http_request request) {
+bool serverLogin(http_request request) {
     try {
         int id = 1;
         wstring ip = request.get_remote_address();
-        unsigned char* aesKey = ipsAndKeys.at(ip);
-        unsigned char* iv = ipsAndIvs.at(ip);
+        unsigned char* aesKey = new unsigned char[2];
+        unsigned char* iv = new unsigned char[2];
+        try {
+            aesKey = ipsAndKeys.at(ip);
+        }
+        catch (exception& e) {
+            cout << e.what() << endl;
+            delete[] aesKey;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
+        try {
+            iv = ipsAndIvs.at(ip);
+        }
+        catch (exception& e) {
+            delete[] iv;
+            delete[] aesKey;
+            cout << e.what() << endl;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
         wstring uri = request.relative_uri().to_string();
         uri = uri.substr(1, uri.length());
         wstring body = request.extract_utf16string().get();
@@ -569,18 +584,22 @@ void serverLogin(http_request request) {
         }
         catch (exception& e) {
             wcout << "Invalid stoi on user ID: " << idNum << endl << endl;
-            request.reply(status_codes::BadRequest);
+            request.reply(status_codes::BadRequest, L"Invalid user ID.");
+            return false;
         }
         wcout << request.get_remote_address() << endl;
         if (loggedIn.contains(idNum)) {
             wcout << "Duplicate login attempt on account " << idNum << "." << endl << endl;
-            request._reply_if_not_already(status_codes::Conflict);
+            request.reply(status_codes::Conflict, L"Unable to log in to this account. Please try again later.");
+            return false;
         }
         else {
             Account* acc = dat->getAccount(idNum, *context);
             if (acc == nullptr || idNum == 1) { // Checks to see if the account is null or the admin account.
                 cout << "Attempted login to the admin account." << endl << endl;
-                request._reply_if_not_already(status_codes::BadRequest);
+                request.reply(status_codes::BadRequest, L"Invalid user ID.");
+                delete acc;
+                return false;
             }
             else {
                 wstring actualPin = to_wstring(acc->getHashedPin());
@@ -589,15 +608,17 @@ void serverLogin(http_request request) {
                     loggedIn.insert(pair<int, wstring>(acc->getId(), request.get_remote_address()));
                     heartbeats.insert(make_pair(request.get_remote_address(), time(nullptr)));
                     wcout << "Account " << idNum << " logged in." << endl << endl;
-
-                    request._reply_if_not_already(status_codes::OK);
+                    request.reply(status_codes::OK);
+                    delete acc;
+                    return true;
                 }
                 else {
                     wcout << "Unsuccessful login attempt on account" << idNum << endl << endl;
-                    request._reply_if_not_already(status_codes::NotAcceptable);
+                    request.reply(status_codes::NotAcceptable, L"Some of your login details were wrong. Please try again.");
+                    delete acc;
+                    return false;
                 }
             }
-            delete acc;
         }
     }
     catch (exception& e) {
@@ -606,12 +627,31 @@ void serverLogin(http_request request) {
         request.reply(status_codes::InternalError);
     }
 }
-
-void serverLogout(http_request request) {
+bool serverLogout(http_request request) {
     try {
         wstring id = request.relative_uri().to_string();
-        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
-        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring ip = request.get_remote_address();
+        unsigned char* aesKey = new unsigned char[2];
+        unsigned char* iv = new unsigned char[2];
+        try {
+            aesKey = ipsAndKeys.at(ip);
+        }
+        catch (exception& e) {
+            cout << e.what() << endl;
+            delete[] aesKey;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
+        try {
+            iv = ipsAndIvs.at(ip);
+        }
+        catch (exception& e) {
+            delete[] iv;
+            delete[] aesKey;
+            cout << e.what() << endl;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
         id = id.substr(1, id.length());
         int idNum = 0;
         try {
@@ -619,7 +659,8 @@ void serverLogout(http_request request) {
         }
         catch (exception& e) {
             cout << "Invalid id number in stoi." << endl;
-            request.reply(status_codes::BadRequest);
+            request.reply(status_codes::BadRequest, L"Your login credentials are incorrect.");
+            return false;
         }
         if (loggedIn.contains(idNum)) {
             if (loggedIn.at(idNum).compare(request.get_remote_address()) == 0) {
@@ -631,28 +672,51 @@ void serverLogout(http_request request) {
                 ipsAndKeys.erase(request.get_remote_address());
                 heartbeats.erase(request.get_remote_address());
                 request.reply(status_codes::OK);
+                return true;
             }
             else {
                 wcout << "Attempted access to account " << idNum << " from a different IP." << endl << endl;
-                request.reply(status_codes::Forbidden);
+                request.reply(status_codes::Forbidden, L"Something has gone wrong with your login. Please log in again to continue.");
+                return false;
             }
         }
         else {
             wcout << "Attempted access to invalid account ID " << idNum << "." << endl << endl;
-            request.reply(status_codes::Forbidden);
+            request.reply(status_codes::Forbidden, L"Your login credentials are incorrect.");
+            return false;
         }
     }
     catch (exception& e) {
         cout << "Internal error occurred:" << endl;
         cout << e.what() << endl << endl;
         request.reply(status_codes::InternalError);
+        return false;
     }
 }
-
-void serverTransfer(http_request request) {
+bool serverTransfer(http_request request) {
     try {
-        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
-        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring ip = request.get_remote_address();
+        unsigned char* aesKey = new unsigned char[2];
+        unsigned char* iv = new unsigned char[2];
+        try {
+            aesKey = ipsAndKeys.at(ip);
+        }
+        catch (exception& e) {
+            cout << e.what() << endl;
+            delete[] aesKey;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
+        try {
+            iv = ipsAndIvs.at(ip);
+        }
+        catch (exception& e) {
+            delete[] iv;
+            delete[] aesKey;
+            cout << e.what() << endl;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
         wstring uri = request.relative_uri().to_string();
         uri = uri.substr(1, uri.length());
         string decrypted = aesDecrypt(uri, aesKey, iv);
@@ -666,14 +730,18 @@ void serverTransfer(http_request request) {
         }
         catch (exception& e) {
             cout << "Invalid account IDs" << endl;
+            request.reply(status_codes::BadRequest, L"Invalid recipient account selected. You cannot choose this account as a recipient.");
+            return false;
         }
         if (idTo == 1) {
             cout << "Attempted sending of money from account " << idFrom << "to the admin account." << endl << endl;
             request.reply(status_codes::BadRequest, L"Invalid recipient account selected. You cannot choose this account as a recipient.");
+            return false;
         }
         else if (idTo == idFrom) {
             cout << "Attempted sending of money from account " << idFrom << " to itself." << endl << endl;
             request.reply(status_codes::BadRequest, L"Invalid recipient account selected. You cannot choose this account as a recipient.");
+            return false;
         }
         else {
             Account* accFrom = dat->getAccount(idFrom, *context);
@@ -681,6 +749,9 @@ void serverTransfer(http_request request) {
             if (accTo == nullptr) {
                 wcout << "Attempt to send money to invalid account with ID " << idTo << "." << endl << endl;
                 request.reply(status_codes::BadRequest, L"Invalid recipient account selected. You cannot choose this account as a recipient.");
+                delete accFrom;
+                delete accTo;
+                return false;
             }
             else {
                 wstring amount = request.extract_utf16string().get();
@@ -691,24 +762,34 @@ void serverTransfer(http_request request) {
                 catch (exception& e) {
                     cout << "Unable to read the amount desired to be sent." << endl;
                     request.reply(status_codes::BadRequest, L"Invalid amount to be sent.");
+                    delete accFrom;
+                    delete accTo;
+                    return false;
                 }
                 cout << "Amount to transfer: " << am << endl;
                 if (loggedIn.contains(idFrom)) {
                     if (loggedIn.at(idFrom).compare(request.get_remote_address()) == 0) {
                         seal::CKKSEncoder encoder(*context);
-                        seal::SecretKey secret_key;
-                        string keyAddress = accFrom->getKeyAddress();
-                        cout << "Key address: " << keyAddress << endl;
-                        ifstream keyIn(keyAddress, std::ios::binary);
-                        secret_key.load(*context, keyIn);
+                        seal::SecretKey secret_keyFrom;
+                        seal::SecretKey secret_keyTo;
+                        string keyAddressFrom = accFrom->getKeyAddress();
+                        string keyAddressTo = accTo->getKeyAddress();
+                        cout << "Key address: " << keyAddressFrom << endl;
+                        cout << "Key address: " << keyAddressTo << endl;
+                        ifstream keyIn(keyAddressFrom, std::ios::binary);
+                        secret_keyFrom.load(*context, keyIn);
                         keyIn.close();
-                        seal::Encryptor encryptor(*context, secret_key);
-                        seal::Decryptor decryptor(*context, secret_key);
+                        ifstream keyIn2(keyAddressTo, std::ios::binary);
+                        secret_keyTo.load(*context, keyIn2);
+                        keyIn2.close();
+                        seal::Encryptor encryptorFrom(*context, secret_keyFrom);
+                        seal::Encryptor encryptorTo(*context, secret_keyTo);
+                        seal::Decryptor decryptor(*context, secret_keyFrom);
                         seal::Plaintext plaintext;
                         seal::Ciphertext ciphertext;
                         double scale = pow(2, 20);
                         encoder.encode(am, scale, plaintext);
-                        encryptor.encrypt_symmetric(plaintext, ciphertext);
+                        encryptorFrom.encrypt_symmetric(plaintext, ciphertext);
                         time_t nowTime = time(nullptr);
                         cout << nowTime << endl;
                         transactionID = dat->getTransactionID() + 1;
@@ -718,44 +799,74 @@ void serverTransfer(http_request request) {
                         outFile.close();
                         wstring balAddress = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress());
                         vector<double> res;
-                        getAmount(balAddress, ciphertext);
+                        status_code code = getAmount(balAddress, ciphertext);
+                        if (code != status_codes::OK) {
+                            cout << "Could not access balance on cloud server." << endl;
+                            delete accFrom;
+                            delete accTo;
+                            request.reply(status_codes::InternalError);
+                        }
                         remove(std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(balAddress).c_str());
                         decryptor.decrypt(ciphertext, plaintext);
                         encoder.decode(plaintext, res);
                         cout << fixed << setprecision(2) << res[0] - am << endl;
                         if (am <= res[0] + accFrom->getOverdraft() && am > 0.00999) {
+                            // Send the first file
                             http_client client2(cloudDNS + L":8081/transfer");
                             auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
                             wstring toSendFile = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress()) + L"," + std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accTo->getBalanceAddress()) + L"," + fileName;
-                            auto response = client2.request(methods::PUT, toSendFile, f.streambuf());
-                            wcout << response.get().status_code();
-                            dat->logTransaction(accFrom, accTo, nowTime, transactionID);
-                            am = -am;
-                            encoder.encode(am, scale, plaintext);
-                            encryptor.encrypt_symmetric(plaintext, ciphertext);
-                            fileName = to_wstring(idTo) + L"'" + to_wstring(idFrom) + L"'" + to_wstring(transactionID) + L".txt";
-                            ofstream outFile2(fileName, std::ios::binary);
-                            ciphertext.save(outFile2);
-                            outFile2.close();
-                            f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
-                            response = client2.request(methods::POST, fileName, f.streambuf());
-                            wcout << response.get().extract_utf16string().get() << endl;
-                            cout << "Transferred successful from " << idFrom << " to " << idTo << " for amount " << (char)156 << -am << "." << endl << endl;
-                            request.reply(status_codes::OK);
+                            auto response = client2.request(methods::PUT, toSendFile, f.streambuf()).get();
+                            if (response.status_code() == status_codes::OK) {
+                                // Send the second file
+                                am = -am;
+                                encoder.encode(am, scale, plaintext);
+                                encryptorTo.encrypt_symmetric(plaintext, ciphertext);
+                                fileName = to_wstring(idTo) + L"'" + to_wstring(idFrom) + L"'" + to_wstring(transactionID) + L".txt";
+                                wcout << fileName << endl;
+                                ofstream outFile2(fileName, std::ios::binary);
+                                ciphertext.save(outFile2);
+                                outFile2.close();
+                                toSendFile = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accTo->getBalanceAddress()) + L"," + std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(accFrom->getBalanceAddress()) + L"," + fileName;
+                                f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
+                                response = client2.request(methods::PUT, toSendFile, f.streambuf()).get();
+                                if (response.status_code() == status_codes::OK) {
+                                    wcout << response.status_code() << endl;
+                                    dat->logTransaction(accFrom, accTo, nowTime, transactionID);
+                                    cout << "Transferred successful from " << idFrom << " to " << idTo << " for amount " << (char)156 << -am << "." << endl << endl;
+                                    request.reply(status_codes::OK);
+                                    delete accFrom;
+                                    delete accTo;
+                                    return true;
+                                }
+                            }
+                            cout << "Error on cloud server." << endl;
+                            request.reply(status_codes::InternalError);
+                            delete accFrom;
+                            delete accTo;
+                            return false;
                         }
                         else {
                             cout << "Attempted transaction with invalid input." << endl << endl;
                             request.reply(status_codes::BadRequest, L"Invalid input. Please try again.");
+                            delete accFrom;
+                            delete accTo;
+                            return false;
                         }
                     }
                     else {
                         wcout << "Attempted access to account " << idFrom << " from a different IP." << endl << endl;
                         request.reply(status_codes::Conflict);
+                        delete accFrom;
+                        delete accTo;
+                        return false;
                     }
                 }
                 else {
                     wcout << "Attempted access to logged out account " << idFrom << "." << endl << endl;
                     request.reply(status_codes::Conflict);
+                    delete accFrom;
+                    delete accTo;
+                    return false;
                 }
             }
             delete accFrom;
@@ -767,19 +878,40 @@ void serverTransfer(http_request request) {
         if (errmsg.compare("invalid stoi argument") == 0 || errmsg.compare("invalid stod argument") == 0) {
             request.reply(status_codes::BadRequest);
             wcout << "Invalid input in transaction" << endl << endl;
+            return false;
         }
         else {
             cout << "Internal error occurred." << endl;
             cout << e.what() << endl << endl;;
             request.reply(status_codes::InternalError);
+            return false;
         }
     }
 }
-
-void serverBalance(http_request request) {
+bool serverBalance(http_request request) {
     try {
-        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
-        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring ip = request.get_remote_address();
+        unsigned char* aesKey = new unsigned char[2];
+        unsigned char* iv = new unsigned char[2];
+        try {
+            aesKey = ipsAndKeys.at(ip);
+        }
+        catch (exception& e) {
+            cout << e.what() << endl;
+            delete[] aesKey;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
+        try {
+            iv = ipsAndIvs.at(ip);
+        }
+        catch (exception& e) {
+            delete[] aesKey;
+            delete[] iv;
+            cout << e.what() << endl;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
         wstring idTo = request.relative_uri().to_string();
         idTo = idTo.substr(1, idTo.length());
         wcout << idTo << endl;
@@ -791,7 +923,8 @@ void serverBalance(http_request request) {
         }
         catch (exception& e) {
             cout << "Stoi error on id." << endl;
-            request.reply(status_codes::BadRequest);
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
         }
         if (loggedIn.contains(id)) {
             if (loggedIn.at(id).compare(request.get_remote_address()) == 0) {
@@ -816,33 +949,59 @@ void serverBalance(http_request request) {
                     wstring toSend = aesEncrypt(toEncrypt, aesKey, iv);
                     request.reply(status_codes::OK, toSend);
                     std::remove(std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(balAddress).c_str());
+                    delete account;
+                    _CrtDumpMemoryLeaks();
+                    return true;
                 }
                 else {
-                    request.reply(status_codes::NotFound);
+                    request.reply(status_codes::NotFound, "Cannot locate account. Please contact an administrator.");
+                    delete account;
+                    return false;
                 }
-                delete account;
             }
             else {
                 wcout << "Attempted access to account " << idTo << " from a different IP." << endl << endl;
-                request._reply_if_not_already(status_codes::Forbidden);
+                request.reply(status_codes::Forbidden, L"Something has gone wrong with your login. Please log in again to continue.");
+                return false;
             }
         }
         else {
             wcout << "Attempted access to logged out account " << idTo << "." << endl << endl;
-            request._reply_if_not_already(status_codes::Forbidden);
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
         }
     }
     catch (exception& e) {
         wcout << "Internal error occurred:" << endl;
-        cout << e.what() << endl << endl;
+        cout << e.what() << endl;
         request.reply(status_codes::InternalError);
+        return false;
     }
 }
-
-void serverHistory(http_request request) {
+bool serverHistory(http_request request) {
     try {
-        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
-        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring ip = request.get_remote_address();
+        unsigned char* aesKey = new unsigned char[2];
+        unsigned char* iv = new unsigned char[2];
+        try {
+            aesKey = ipsAndKeys.at(ip);
+        }
+        catch (exception& e) {
+            cout << e.what() << endl;
+            delete[] aesKey;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
+        try {
+            iv = ipsAndIvs.at(ip);
+        }
+        catch (exception& e) {
+            delete[] iv;
+            delete[] aesKey;
+            cout << e.what() << endl;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
         wstring idTo = request.relative_uri().to_string();
         idTo = idTo.substr(1, idTo.length());
         int id = 0;
@@ -850,7 +1009,8 @@ void serverHistory(http_request request) {
             id = stoi(aesDecrypt(idTo, aesKey, iv));
         }
         catch (exception& e) {
-            request.reply(status_codes::BadRequest);
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
         }
         if (loggedIn.contains(id)) {
             if (loggedIn.at(id).compare(request.get_remote_address()) == 0) {
@@ -860,6 +1020,7 @@ void serverHistory(http_request request) {
                     details = "No transactions have occurred on this account.";
                     wstring toSend = aesEncrypt(details, aesKey, iv);
                     request.reply(status_codes::OK, toSend);
+                    return true;
                 }
                 else {
                     for (Transaction* transaction : transactionList->getTransactions()) {
@@ -876,7 +1037,15 @@ void serverHistory(http_request request) {
                         keyIn.close();
                         seal::Decryptor decryptor(*context, secret_key);
                         seal::CKKSEncoder encoder(*context);
-                        getAmount(balAddress, ciphertext);
+                        http::status_code code = getAmount(balAddress, ciphertext);
+                        if (code != status_codes::OK) {
+                            cout << "Could not access file on cloud server." << endl;
+                            request.reply(status_codes::InternalError);
+                            for (Transaction* t : transactionList->getTransactions()) { // Clear out the memory before closing
+                                transactions->removeTransaction(t);
+                            }
+                            return false;
+                        }
                         decryptor.decrypt(ciphertext, plaintext);
                         encoder.decode(plaintext, res);
                         std::stringstream ss;
@@ -891,23 +1060,45 @@ void serverHistory(http_request request) {
                     wstring toSend = aesEncrypt(details, aesKey, iv);
                     cout << "Done!" << endl;
                     request.reply(status_codes::OK, toSend);
+                    _CrtDumpMemoryLeaks();
+                    return true;
                 }
-                //delete transactionList;
             }
         }
-        request._reply_if_not_already(status_codes::Forbidden);
+        request.reply(status_codes::Forbidden, L"Invalid login credentials");
+        return false;
     }
     catch (exception& e) {
         cout << "Internal error occurred: " << endl;
         cout << e.what() << endl << endl;
         request.reply(status_codes::InternalError);
+        return false;
     }
 }
-
-void serverDebits(http_request request) {
+bool serverDebits(http_request request) {
     try {
-        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
-        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring ip = request.get_remote_address();
+        unsigned char* aesKey = new unsigned char[2];
+        unsigned char* iv = new unsigned char[2];
+        try {
+            aesKey = ipsAndKeys.at(ip);
+        }
+        catch (exception& e) {
+            cout << e.what() << endl;
+            delete[] aesKey;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
+        try {
+            iv = ipsAndIvs.at(ip);
+        }
+        catch (exception& e) {
+            delete[] iv;
+            delete[] aesKey;
+            cout << e.what() << endl;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
         wstring idTo = request.relative_uri().to_string();
         idTo = idTo.substr(1, idTo.length());
         idTo = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(aesDecrypt(idTo, aesKey, iv));
@@ -917,7 +1108,8 @@ void serverDebits(http_request request) {
         }
         catch (exception& e) {
             wcout << "Invalid stoi request on id " << idTo << endl;
-            request.reply(status_codes::BadRequest);
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
         }
         string details = "";
         if (loggedIn.contains(id)) {
@@ -961,9 +1153,11 @@ void serverDebits(http_request request) {
                 wstring toSend = aesEncrypt(details, aesKey, iv);
                 request.reply(status_codes::OK, toSend);
                 delete debits;
+                return true;
             }
         }
-        request._reply_if_not_already(status_codes::Forbidden);
+        request.reply(status_codes::Forbidden, L"Invalid login credentials");
+        return false;
     }
     catch (exception& e) {
         cout << "Internal error occurred: " << endl;
@@ -972,23 +1166,43 @@ void serverDebits(http_request request) {
             cout << "This is probably due to a necessary file being missing on the cloud server." << endl;
         }
         request._reply_if_not_already(status_codes::InternalError);
+        return false;
     }
 }
-
-void serverAddDebits(http_request request) {
+bool serverAddDebits(http_request request) {
     try {
-        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
-        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring ip = request.get_remote_address();
+        unsigned char* aesKey = new unsigned char[2];
+        unsigned char* iv = new unsigned char[2];
+        try {
+            aesKey = ipsAndKeys.at(ip);
+        }
+        catch (exception& e) {
+            cout << e.what() << endl;
+            delete[] aesKey;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
+        try {
+            iv = ipsAndIvs.at(ip);
+        }
+        catch (exception& e) {
+            delete[] iv;
+            delete[] aesKey;
+            cout << e.what() << endl;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
         wstring idFrom = request.relative_uri().to_string();
         idFrom = idFrom.substr(1, idFrom.length());
-
         int id;
         try {
             id = stoi(aesDecrypt(idFrom, aesKey, iv));
         }
         catch (exception& e) {
             cout << "Bad account ID conversion" << endl;
-            request._reply_if_not_already(status_codes::BadRequest);
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
         }
         if (loggedIn.contains(id)) {
             if (loggedIn.at(id).compare(request.get_remote_address()) == 0) {
@@ -1012,8 +1226,12 @@ void serverAddDebits(http_request request) {
                     to = dat->getAccount(stoi(idString), *context);
                 }
                 catch (exception& e) {
-                    cout << "Bad account ID conversion for send to request from account " << id << endl << endl;
-                    request._reply_if_not_already(status_codes::BadRequest);
+                    cout << "Bad account ID conversion for send request from account " << id << endl << endl;
+                    request.reply(status_codes::BadRequest, L"Invalid recipient account. Please try again.");
+                    return false;
+                }
+                if (stoi(idString) == 1) {
+                    request.reply(status_codes::BadRequest, L"Invalid recipient acount. Please try again.");
                 }
                 cout << "About to check against debits" << endl;
                 DebitList* debitList = dat->queryDebits(*context);
@@ -1028,11 +1246,13 @@ void serverAddDebits(http_request request) {
                 }
                 if (to == nullptr) {
                     cout << "Attempting to send money to an invalid account." << endl;
-                    request._reply_if_not_already(status_codes::BadRequest);
+                    request.reply(status_codes::BadRequest, L"Invalid recipient account. Please try again.");
+                    return false;
                 }
                 else if (from->getId() == to->getId()) {
                     cout << "User number " << id << " attempted to create a direct debit to themselves." << endl << endl;
-                    request._reply_if_not_already(status_codes::BadRequest);
+                    request.reply(status_codes::BadRequest, L"Invalid recipient account. Please try again.");
+                    return false;
                 }
                 else {
                     cout << "About to create cron" << endl;
@@ -1045,10 +1265,9 @@ void serverAddDebits(http_request request) {
                     }
                     catch (exception& e) {
                         cout << "User " << id << " sent a bad cron expression." << endl << endl;
-                        request._reply_if_not_already(status_codes::BadRequest);
-                        validCron = false;
+                        request.reply(status_codes::BadRequest, L"Invalid regularity. Please try again.");
+                        return false;
                     }
-                    if (validCron) {
                         seal::SecretKey secret_key;
                         ifstream keyIn(from->getKeyAddress(), std::ios::binary);
                         secret_key.load(*context, keyIn);
@@ -1064,7 +1283,7 @@ void serverAddDebits(http_request request) {
                         }
                         catch (exception& e) {
                             cout << "Bad stod conversion on amount string from user " << id << endl << endl;
-                            request._reply_if_not_already(status_codes::BadRequest);
+                            request.reply(status_codes::BadRequest, L"Invalid amount. Please try again.");
                         }
                         if (amount != 0.0) {
                             double scale = pow(2, 20);
@@ -1087,29 +1306,51 @@ void serverAddDebits(http_request request) {
                                 cout << "Direct debit added to account " << to_string(id) << endl << endl;
                                 delete debit;
                                 request._reply_if_not_already(status_codes::OK);
+                                delete from;
+                                delete to;
+                                delete debitList;
+                                return true;
                             }
-                            request._reply_if_not_already(status_codes::InternalError);
+                            request.reply(status_codes::InternalError, L"Internal error when locating your files. Please contact an administrator");
+                            return false;
                         }
                     }
-                }
-                delete from;
-                delete to;
-                delete debitList;
             }
         }
-        request.reply(status_codes::Forbidden);
+        request.reply(status_codes::Forbidden, L"Invalid login credentials");
+        return false;
     }
     catch (exception& e) {
         cout << "Internal error occurred:" << endl;
         cout << e.what() << endl << endl;
         request.reply(status_codes::InternalError);
+        return false;
     }
 }
-
-void serverRemoveDebit(http_request request) {
+bool serverRemoveDebit(http_request request) {
     try {
-        unsigned char* aesKey = ipsAndKeys.at(request.get_remote_address());
-        unsigned char* iv = ipsAndIvs.at(request.get_remote_address());
+        wstring ip = request.get_remote_address();
+        unsigned char* aesKey = new unsigned char[2];
+        unsigned char* iv = new unsigned char[2];
+        try {
+            aesKey = ipsAndKeys.at(ip);
+        }
+        catch (exception& e) {
+            cout << e.what() << endl;
+            delete[] aesKey;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
+        try {
+            iv = ipsAndIvs.at(ip);
+        }
+        catch (exception& e) {
+            delete[] iv;
+            delete[] aesKey;
+            cout << e.what() << endl;
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
+        }
         wstring idFrom = request.relative_uri().to_string();
         idFrom = idFrom.substr(1, idFrom.length());
         idFrom = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(aesDecrypt(idFrom, aesKey, iv));
@@ -1120,7 +1361,8 @@ void serverRemoveDebit(http_request request) {
         }
         catch (exception& e) {
             cout << "Invalid stoi from id" << endl;
-            request.reply(status_codes::BadRequest);
+            request.reply(status_codes::Forbidden, L"Invalid login credentials");
+            return false;
         }
         cout << id << endl;
         if (loggedIn.contains(id)) {
@@ -1134,14 +1376,18 @@ void serverRemoveDebit(http_request request) {
                 }
                 catch (exception& e) {
                     cout << "Invalid stoi conversion on direct debit ID" << endl << endl;
-                    cout << "Invalid stoi conversion on direct debit ID" << endl << endl;
-                    request.reply(status_codes::BadRequest);
+                    request.reply(status_codes::BadRequest, L"Invalid debit ID");
+                    delete acc;
+                    return false;
                 }
                 cout << "Debit ID: ";
                 cout << deb << endl;
                 DebitList* debits = dat->queryDebits(*context);
                 if (debits == nullptr) {
-                    request.reply(status_codes::NotFound);
+                    delete acc;
+                    delete debits;
+                    request.reply(status_codes::NotFound, L"Invalid debit ID");
+                    return false;
                 }
                 else {
                     for (DirectDebit* d : debits->getDebits())
@@ -1159,55 +1405,71 @@ void serverRemoveDebit(http_request request) {
                                 debits->removeDebit(d);
                                 remove(address.c_str());
                                 request._reply_if_not_already(status_codes::OK);
-                                break;
+                                delete debits;
+                                delete acc;
+                                return true;
                             }
                         }
                     }
-                    request._reply_if_not_already(status_codes::NotFound);
+                    request.reply(status_codes::NotFound, L"Invalid debit ID");
                     delete debits;
+                    delete acc;
+                    return false;
                 }
-                delete acc;
             }
         }
-        request._reply_if_not_already(status_codes::Forbidden);
+        request.reply(status_codes::Forbidden, L"Invalid login credentials");
+        return false;
     }
     catch (exception& e) {
         cout << "Internal error occurred:" << endl;
         cout << e.what() << endl;
         request.reply(status_codes::InternalError);
+        return false;
     }
 }
-
-void replyToHeartbeat(http_request request) {
-    wcout << L"Heartbeat received from " << request.get_remote_address() << endl;
-    heartbeats.at(request.get_remote_address()) = time(nullptr);
-    request.reply(status_codes::OK);
+bool replyToHeartbeat(http_request request) {
+    try {
+        wcout << L"Heartbeat received from " << request.get_remote_address() << endl;
+        heartbeats.at(request.get_remote_address()) = time(nullptr);
+        request.reply(status_codes::OK);
+        return true;
+    }
+    catch (exception& e) {
+        cout << e.what() << endl;
+        request.reply(status_codes::BadRequest, L"Invalid heartbeat request");
+        return false;
+    }
 }
-
 void checkHeartbeats() {
     while (true) {
-        for (auto const& [ip, lastHeartbeat] : heartbeats) {
-            wcout << ip << endl;
-            if (lastHeartbeat < time(nullptr) - 15) {
-                ipsAndIvs.erase(ip);
-                ipsAndKeys.erase(ip);
-                cout << "Forcibly logging out unresponsive account" << endl;
-                for (auto const& [id, ip2] : loggedIn) {
-                    cout << "ID: " << id << endl;
-                    wcout << L"IP: " << ip2 << endl;
-                    wcout << L"Other IP: " << ip << endl;
-                    cout << "Comparison of IPS: " << ip2.compare(ip) << endl;
-                    if (ip2.compare(ip) == 0) {
-                        heartbeats.erase(ip);
-                        loggedIn.erase(id);
-                        ipsAndIvs.erase(ip);
-                        ipsAndKeys.erase(ip);
-                        cout << "Logged out account " << to_string(id) << endl;
+        try {
+            for (auto const& [ip, lastHeartbeat] : heartbeats) {
+                wcout << ip << endl;
+                if (lastHeartbeat < time(nullptr) - 15) {
+                    ipsAndIvs.erase(ip);
+                    ipsAndKeys.erase(ip);
+                    cout << "Forcibly logging out unresponsive account" << endl;
+                    for (auto const& [id, ip2] : loggedIn) {
+                        cout << "ID: " << id << endl;
+                        wcout << L"IP: " << ip2 << endl;
+                        wcout << L"Other IP: " << ip << endl;
+                        cout << "Comparison of IPS: " << ip2.compare(ip) << endl;
+                        if (ip2.compare(ip) == 0) {
+                            heartbeats.erase(ip);
+                            loggedIn.erase(id);
+                            ipsAndIvs.erase(ip);
+                            ipsAndKeys.erase(ip);
+                            cout << "Logged out account " << to_string(id) << endl;
+                        }
                     }
                 }
             }
+            _sleep(14800);
         }
-        _sleep(14800);
+        catch (exception& e) {
+            cout << e.what() << endl;
+        }
     }
 }
 
@@ -1259,7 +1521,6 @@ int main()
 
         http_listener heartbeatListener(serverDNS + L":8080/heartbeat");
         heartbeatListener.support(methods::GET, replyToHeartbeat);
-
 
         loginListener
             .open()

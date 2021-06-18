@@ -69,7 +69,7 @@ void loadCKKSParams(seal::EncryptionParameters& params) {
 }
 
 
-void sendBalance(http_request request) {
+bool sendBalance(http_request request) {
     try {
         if (request.get_remote_address().compare(serverIP) == 0) {
             wstring fileName = request.relative_uri().to_string();
@@ -78,22 +78,26 @@ void sendBalance(http_request request) {
                 wcout << fileName << endl;
                 auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
                 request.reply(status_codes::OK, f.streambuf());
+                return true;
             }
             else {
-                request.reply(status_codes::NotFound);
+                request.reply(status_codes::NotFound, L"File not found");
+                return false;
             }
         }
         else {
-            request.reply(status_codes::Forbidden);
+            request.reply(status_codes::Forbidden, L"Not authorised to request");
+            return false;
         }
     }
     catch (exception& e) {
         cout << e.what() << endl;
         request.reply(status_codes::InternalError);
+        return false;
     }
 }
 
-void transaction(http_request request) {
+bool transaction(http_request request) {
     try {
         if (request.get_remote_address().compare(serverIP) == 0) {
             // Partition URI into relevant segments
@@ -111,7 +115,7 @@ void transaction(http_request request) {
             wcout << "Updated URI: " << uri << endl;
             wstring amountFile = uri;
             wcout << "Amount file: " << amountFile << endl;
-            if (filesystem::exists(fileFrom) && filesystem::exists(fileTo)) {
+            if (filesystem::exists(fileFrom)) {
                 // Extract the amount file from the request and create a file for storage
                 auto buf = request.body().streambuf();
                 string contents = "";
@@ -131,10 +135,6 @@ void transaction(http_request request) {
                 fromBal.load(*context, fromIn);
                 fromIn.close();
                 cout << "fromBal read in" << endl;
-                ifstream toIn(fileTo, std::ios::binary);
-                toBal.load(*context, toIn);
-                toIn.close();
-                cout << "toBal read in" << endl;
                 ifstream balIn(amountFile, std::ios::binary);
                 amount.load(*context, balIn);
                 balIn.close();
@@ -143,45 +143,33 @@ void transaction(http_request request) {
                 // Perform encrypted arithmetic on ciphertexts to update balances
                 seal::Evaluator evaluator(*context);
                 evaluator.sub_inplace(fromBal, amount);
-                cout << "Amount deducted" << endl;
-                evaluator.add_inplace(toBal, amount);
-                cout << "Amount added" << endl;
-                evaluator.negate_inplace(amount);
-                wcout << "File name: " << amountFile << endl;
-                index = amountFile.find_first_of((char)39);
-                wstring from = amountFile.substr(0, index);
-                wcout << L"From: " << from << endl;
-                wcout << L"Remaining file name: " << amountFile << endl;
-                amountFile = amountFile.substr(index + 1, amountFile.length());
-                index = amountFile.find_first_of((char)39);
-                wstring to = amountFile.substr(0, index);
-                wcout << L"To: " << to << endl;
-                amountFile = amountFile.substr(index + 1, amountFile.length());
+                cout << "Amount processed" << endl;
                 // Write new balances into balance files
                 ofstream fromOut(fileFrom, std::ios::binary);
                 fromBal.save(fromOut);
                 fromOut.close();
-                ofstream toOut(fileTo, std::ios::binary);
-                toBal.save(toOut);
-                toOut.close();
                 // Reply with the OK message if all goes to plan
                 request.reply(status_codes::OK);
+                return true;
             }
             else {
-                request.reply(status_codes::NotFound);
+                request.reply(status_codes::NotFound, L"File not found.");
+                return false;
             }
         }
         else {
-            request.reply(status_codes::Forbidden);
+            request.reply(status_codes::Forbidden, L"Not authorised to make request");
+            return false;
         }
     }
     catch (exception& e) {
         cout << e.what() << endl;
         request.reply(status_codes::InternalError);
+        return false;
     }
 }
 
-void additionalFile(http_request request) { // Provided the .txt file isn't a malicious payload (which is unlikely) we're good. Otherwise this isn't great
+bool additionalFile(http_request request) { // Provided the .txt file isn't a malicious payload (which is unlikely) we're good. Otherwise this isn't great
                                             // Also it's not ideal how someone can just DOS the cloud server by spamming this link after spoofing the main server's IP and loading up the instance with massive .txt files
     try {
         if (request.get_remote_address().compare(serverIP) == 0) {
@@ -193,7 +181,8 @@ void additionalFile(http_request request) { // Provided the .txt file isn't a ma
             wcout << type << endl;
 
             if (type.compare(L".txt") != 0 && !filesystem::exists(uri)) { // No overwriting of files via this method, and no accepting of anything that isn't a simple .txt file
-                request.reply(status_codes::Forbidden);
+                request.reply(status_codes::Forbidden, L"Not a valid file");
+                return false;
             }
             else {
                 string contents = "";
@@ -203,55 +192,70 @@ void additionalFile(http_request request) { // Provided the .txt file isn't a ma
                         contents += buf.sbumpc();
                     }
                 }
-                if (!filesystem::exists(uri)) {
+                if (contents.length() > 328 * 1024 * 1024 * 8) { // If the length is bigger than 328kB then we can be sure that this is not a relevant ciphertext.
+                    request.reply(status_codes::Forbidden, L"Not a valid file");
+                    return false;
+                }
                     std::ofstream outFile(uri, std::ios::binary);
                     outFile << contents;
                     outFile.close();
                     request.reply(status_codes::OK);
-                }
-                else {
-                    request.reply(status_codes::Forbidden);
-                }
+                    return true;
             }
         }
         else {
-            request.reply(status_codes::Forbidden);
+            request.reply(status_codes::Forbidden, L"Cannot authenticate as the main server");
+            return false;
         }
     }
     catch (exception& e) {
         cout << e.what() << endl;
         request.reply(status_codes::InternalError);
+        return false;
     }
 }
 
-void directDebit(http_request request) {
+bool directDebit(http_request request) {
     try {
         if (request.get_remote_address().compare(serverIP) == 0) {
             wstring fileName = request.relative_uri().to_string();
             wcout << fileName << endl;
             fileName = fileName.substr(1, fileName.length());
-            auto buf = request.body().streambuf();
-            string contents = "";
-            while (!buf.is_eof()) {
-                if (buf.getc().get() != -2) {
-                    contents += buf.sbumpc();
-                }
+            wstring type = fileName.substr(fileName.length() - 4, fileName.length());
+            if (filesystem::exists(fileName)) {
+                request.reply(status_codes::Forbidden, L"File already exists on server");
             }
-            ofstream outFile(fileName, std::ios::binary);
-            outFile << contents;
-            outFile.close();
-            wcout << fileName << " created." << endl;
-            request.reply(status_codes::OK);
+            else if(type.compare(L".txt") != 0) {
+                request.reply(status_codes::Forbidden, L"Not a valid file");
+                return false;
+            }
+            else {
+                auto buf = request.body().streambuf();
+                string contents = "";
+                while (!buf.is_eof()) {
+                    if (buf.getc().get() != -2) {
+                        contents += buf.sbumpc();
+                    }
+                }
+                ofstream outFile(fileName, std::ios::binary);
+                outFile << contents;
+                outFile.close();
+                wcout << fileName << " created." << endl;
+                request.reply(status_codes::OK);
+                return true;
+            }
         }
-        request.reply(status_codes::Forbidden);
+        request.reply(status_codes::Forbidden, L"Cannot authenticate as the main server");
+        return false;
     }
     catch (exception& e) {
         cout << e.what() << endl;
         request.reply(status_codes::InternalError);
+        return false;
     }
 }
 
-void deleteDebit(http_request request) {
+bool deleteDebit(http_request request) {
     try {
         if (request.get_remote_address().compare(serverIP) == 0) {
             wstring fileName = request.relative_uri().to_string();
@@ -260,14 +264,18 @@ void deleteDebit(http_request request) {
             string address = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(fileName);
             cout << address << endl;
             remove(address.c_str());
+            request.reply(status_codes::OK);
+            return true;
         }
         else {
-            request.reply(status_codes::Forbidden);
+            request.reply(status_codes::Forbidden, L"Could not authenticate as the main server");
+            return false;
         }
     }
     catch (exception& e) {
         cout << e.what() << endl;
         request.reply(status_codes::InternalError);
+        return false;
     }
 }
 

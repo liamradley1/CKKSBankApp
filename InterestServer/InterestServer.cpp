@@ -104,6 +104,7 @@ void runInterestSubroutine(DBHandler* dat) {
                     string balAddress = acc->getBalanceAddress();
                     seal::Ciphertext balanceCipher;
                     wstring wBalAddress = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(balAddress);
+                    wcout << "Requesting " << wBalAddress << endl;
                     getAmount(wBalAddress, balanceCipher);
                     cout << "Read in balance at " << balAddress << endl;
                     double interestRate = 0.01; // Hard-coded, not ideal but it is what it is
@@ -118,7 +119,7 @@ void runInterestSubroutine(DBHandler* dat) {
                         seal::Plaintext interestPlain;
                         seal::CKKSEncoder encoder(*context);
                         seal::Ciphertext interestCipher;
-                        double interest = amount * interestRate;
+                        double interest = - amount * interestRate;
                         cout << "Interest to pay: " << interest << endl;
                         double scale = pow(2, 20);
                         encoder.encode(interest, scale, interestPlain);
@@ -130,7 +131,7 @@ void runInterestSubroutine(DBHandler* dat) {
                         wstring wideAddress = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(outputAddress);
                         wstring from = L"admin.txt";
                         wstring to = wstring_convert<codecvt_utf8<wchar_t>>().from_bytes(acc->getBalanceAddress());
-                        wstring toSend = from + L"," + to + L"," + wideAddress;
+                        wstring toSend = to + L"," + from + L"," + wideAddress;
                         wcout << toSend << endl;
                         ofstream amountOut(outputAddress, std::ios::binary);
                         interestCipher.save(amountOut);

@@ -30,7 +30,7 @@ balanceAddress,
 keyAddress, 
 overdraft, 
 pin)
-values ('Liam', 'Radley', 'testCipher1.txt', 'privateKeyCKKS2.pem', 1000, 7359067979067344955);
+values ('Liam', 'Radley', 'testCipher1.txt', 'privateKeyCKKS.pem', 1000, 7359067979067344955);
 
 insert into accounts(
 firstName,
@@ -40,6 +40,16 @@ keyAddress,
 overdraft,
 pin)
 values ('Aaron', 'Radley', 'testCipher2.txt', 'privateKeyCKKS.pem', 1000, 7359067979067344955);
+
+insert into accounts(
+firstName,
+lastName,
+balanceAddress,
+keyAddress,
+overdraft,
+pin)
+values ('Milly', 'Remmington', 'testCipher3.txt', 'privateKeyCKKS.pem', 1000, 7359067979067344955);
+
 
 create table transactions(
 transactionID int primary key auto_increment,
