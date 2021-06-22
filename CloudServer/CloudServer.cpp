@@ -177,6 +177,11 @@ bool additionalFile(http_request request) { // Provided the .txt file isn't a ma
             wstring uri = request.relative_uri().to_string();
             wcout << uri << endl;
             uri = uri.substr(1, uri.length());
+            cout << uri.length() << endl;
+            if (uri.length() <= 4) {
+                request.reply(status_codes::BadRequest, L"Not a valid file");
+                return false;
+            }
             wstring type = uri.substr(uri.length() - 4, uri.length());
             wcout << type << endl;
 
@@ -221,9 +226,14 @@ bool directDebit(http_request request) {
             wstring fileName = request.relative_uri().to_string();
             wcout << fileName << endl;
             fileName = fileName.substr(1, fileName.length());
+            if (fileName.length() <= 4) {
+                request.reply(status_codes::BadRequest, L"Not a valid file");
+                return false;
+            }
             wstring type = fileName.substr(fileName.length() - 4, fileName.length());
             if (filesystem::exists(fileName)) {
                 request.reply(status_codes::Forbidden, L"File already exists on server");
+                return false;
             }
             else if(type.compare(L".txt") != 0) {
                 request.reply(status_codes::Forbidden, L"Not a valid file");

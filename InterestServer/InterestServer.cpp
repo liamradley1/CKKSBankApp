@@ -120,7 +120,7 @@ void runInterestSubroutine(DBHandler* dat) {
                         seal::CKKSEncoder encoder(*context);
                         seal::Ciphertext interestCipher;
                         double interest = - amount * interestRate;
-                        cout << "Interest to pay: " << interest << endl;
+                        cout << "Interest to pay: " << - interest << endl;
                         double scale = pow(2, 20);
                         encoder.encode(interest, scale, interestPlain);
                         encryptor.encrypt_symmetric(interestPlain, interestCipher);
