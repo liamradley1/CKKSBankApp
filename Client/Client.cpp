@@ -656,6 +656,10 @@ void heartbeat() {
             if (response.status_code() != status_codes::OK) {
                 wcout << response.extract_utf16string().get() << endl;
             }
+            else {
+                cout << "Heartbeat could not be sent" << endl;
+                exit(1);
+            }
             _sleep(10000);
         }
     }

@@ -832,8 +832,8 @@ bool serverTransfer(http_request request) {
                             return false;
                         }
                         else {
-                            cout << "Attempted transaction with invalid input." << endl << endl;
-                            request.reply(status_codes::BadRequest, L"Invalid input. Please try again.");
+                            cout << "Attempted transaction with invalid amount." << endl << endl;
+                            request.reply(status_codes::BadRequest, L"You don't have enough in your account. Please try again.");
                             delete accFrom;
                             delete accTo;
                             return false;
