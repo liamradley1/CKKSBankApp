@@ -359,14 +359,12 @@ wstring aesEncrypt(string input) {
     for (int i = 0; i < ciphertext_len; ++i) {
         toSend += to_wstring((int)ciphertext[i]) + L",";
     }
-    wcout << "Encrypted message sent: " << toSend << endl;
     return toSend;
 }
 
 string aesDecrypt(wstring input) {
     int index = input.find_first_of(L",");
     int ciphertext_len = stoi(input.substr(0, index));
-    cout << "Length: " << ciphertext_len << endl;
     wstring body = input.substr(index + 1, input.length());
     wcout << body << endl;
     unsigned char* ciphertext = new unsigned char[ciphertext_len];
@@ -407,7 +405,6 @@ web::http::status_code getKeys(string pubKey, string priKey, unsigned char* aesK
             int converted = (int)pubKey.at(i);
             toSend += to_wstring(converted) + L",";
         }
-        wcout << toSend << endl;
         auto response = client.request(methods::POST, to_wstring(pubKey.length()), toSend).get();
         if (response.status_code() == status_codes::OK) {
             string ciphertext = response.extract_utf8string().get();
@@ -426,17 +423,6 @@ web::http::status_code getKeys(string pubKey, string priKey, unsigned char* aesK
                 extracted_key = extracted_key.substr(index + 1, extracted_key.length());
                 iv[i] = (unsigned char)toAdd;
             }
-            cout << "AES Key: " << endl;
-            for (int i = 0; i < AES_BITS; ++i) {
-                cout << (int)aesKey[i];
-            }
-            cout << endl;
-            for (int i = 0; i < AES_BITS / 2; ++i) {
-                cout << (int)iv[i];
-            }
-            cout << endl;
-
-            cout << "Done" << endl;
             return response.status_code();
         }
         else {
@@ -483,6 +469,9 @@ status_code sendTransfer() {
     if (response.status_code() == status_codes::OK) {
         cout << "Transfer successful!" << endl;
     }
+    else if (response.status_code() == status_codes::InternalError) {
+        cout << "An error occurred on the server. Please try again later." << endl;
+    }
     else {
         wcout << response.extract_utf16string().get() << endl;
     }
@@ -500,6 +489,9 @@ status_code checkBalance() {
             wstring body = response.extract_utf16string().get();
             double balance = stod(aesDecrypt(body));
             cout << "Balance: " << (char)156 << setprecision(2) << fixed << balance << endl << endl;
+        }
+        else if (response.status_code() == status_codes::InternalError) {
+            cout << "An error has occurred on the server. Please try again later." << endl;
         }
         else {
             wcout << response.extract_utf16string().get() << endl;
@@ -593,7 +585,7 @@ status_code addDebit() {
         wstring toSend = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(collection));
         wstring encId = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID));
         auto response = client.request(methods::POST, encId, toSend);
-        if(response.get().status_code() != status_codes::OK) {
+        if (response.get().status_code() != status_codes::OK) {
             wcout << response.get().extract_utf16string().get() << endl;
         }
     }
@@ -657,14 +649,19 @@ status_code debitMenu() {
 }
 
 void heartbeat() {
-    while(loggedID.compare(L"") != 0) {
-    cout << "Sending heartbeat" << endl;
-    http_client client(serverDNS + L":8080/heartbeat");
-    auto response = client.request(methods::GET).get();
-    if (response.status_code() != status_codes::OK) {
-        wcout << response.extract_utf16string().get() << endl;
+    try {
+        while (loggedID.compare(L"") != 0) {
+            http_client client(serverDNS + L":8080/heartbeat");
+            auto response = client.request(methods::GET).get();
+            if (response.status_code() != status_codes::OK) {
+                wcout << response.extract_utf16string().get() << endl;
+            }
+            _sleep(10000);
+        }
     }
-    _sleep(10000);
+    catch (exception& e) {
+        cout << "Heartbeat could not be sent" << endl;
+        exit(1);
     }
 }
 
@@ -684,95 +681,91 @@ status_code sendLogout() {
 
 int main()
 {
-    while (true) {
-        try {
-            string pub_key;
-            string priv_key;
-            GenerateRSAKey(pub_key, priv_key);
-            cout << priv_key << endl;
-            cout << pub_key << endl;
-            status_code code;
-            code = getKeys(pub_key, priv_key, aesKey, iv);
-            if (code == status_codes::OK) {
-                do {
-                    code = status_codes::BadRequest;
-                    cout << "Enter your account id." << endl;
-                    string id;
-                    string pin;
-                    cout << "id: " << flush;
-                    getline(cin, id);
-                    cout << "pin: " << flush;
-                    getline(cin, pin);
-                    std::hash<int> hash;
-                    size_t hashed;
-                    int pinNum = 0;
-                    try {
-                        pinNum = stoi(pin);
+    try {
+        string pub_key;
+        string priv_key;
+        GenerateRSAKey(pub_key, priv_key);
+        status_code code;
+        code = getKeys(pub_key, priv_key, aesKey, iv);
+        if (code == status_codes::OK) {
+            do {
+                code = status_codes::BadRequest;
+                cout << "Enter your account id." << endl;
+                string id;
+                string pin;
+                cout << "id: " << flush;
+                getline(cin, id);
+                cout << "pin: " << flush;
+                getline(cin, pin);
+                std::hash<int> hash;
+                size_t hashed;
+                int pinNum = 0;
+                try {
+                    pinNum = stoi(pin);
+                }
+                catch (exception& e) {
+                    cout << "Invalid login details. Please try again." << endl;
+                }
+                if (pinNum != 0) {
+                    hashed = hash(std::stoi(pin));
+                    pin = to_string(hashed);
+                    cout << hashed << endl;
+                    wstring idToSend = aesEncrypt(id);
+                    wstring pinToSend = aesEncrypt(pin);
+                    code = sendLogin(idToSend, pinToSend);
+                    if (code == status_codes::OK) {
+                        loggedID = wstring_convert < codecvt_utf8<wchar_t>>().from_bytes(id);
                     }
-                    catch (exception& e) {
-                        cout << "Invalid login details. Please try again." << endl;
-                    }
-                    if (pinNum != 0) {
-                        hashed = hash(std::stoi(pin));
-                        pin = to_string(hashed);
-                        cout << hashed << endl;
-                        wstring idToSend = aesEncrypt(id);
-                        wstring pinToSend = aesEncrypt(pin);
-                        code = sendLogin(idToSend, pinToSend);
-                        if (code == status_codes::OK) {
-                            loggedID = wstring_convert < codecvt_utf8<wchar_t>>().from_bytes(id);
-                        }
-                    }
-                } while (code != status_codes::OK);
-                int in = 0;
-                // Start the heartbeat thread to keep the account logged in.
-                std::thread heartbeatThread(heartbeat);
-                do {
-                    cout << "What do you want to do?" << endl;
-                    std::cout << "1: Make a transfer.\n2: Check balance.\n3: Check transaction history.\n4: Add or remove direct debits.\n5: Log out." << std::endl;
-                    std::cout << "Choice: " << std::flush;
-                    std::string input;
-                    std::getline(std::cin, input);
-                    try {
-                        in = stoi(input);
-                    }
-                    catch (exception& e) {
-                        cout << "Please enter a number when trying to perform actions." << endl;
-                    }
-                    switch (in) {
-                    case 1:
-                        sendTransfer();
-                        break;
-                    case 2:
-                        checkBalance();
-                        break;
-                    case 3:
-                        checkHistory();
-                        break;
-                    case 4:
-                        debitMenu();
-                        break;
-                    case 5:
-                        std::cout << "Logging out..." << std::endl;
-                        sendLogout();
-                        heartbeatThread.join();
-                        break;
-                    default:
-                        std::cout << "Invalid choice. Please try again." << std::endl;
-                        break;
-                    }
-                } while (in != 5);
-            }
-            else {
-                cout << "Unable to connect to the server. This may be because you are trying to login twice from the same machine." << endl;
-            }
+                }
+            } while (code != status_codes::OK);
+            int in = 0;
+            // Start the heartbeat thread to keep the account logged in.
+            std::thread heartbeatThread(heartbeat);
+            do {
+                cout << "What do you want to do?" << endl;
+                std::cout << "1: Make a transfer.\n2: Check balance.\n3: Check transaction history.\n4: Add or remove direct debits.\n5: Log out." << std::endl;
+                std::cout << "Choice: " << std::flush;
+                std::string input;
+                std::getline(std::cin, input);
+                try {
+                    in = stoi(input);
+                }
+                catch (exception& e) {
+                    cout << "Please enter a number when trying to perform actions." << endl;
+                }
+                switch (in) {
+                case 1:
+                    sendTransfer();
+                    break;
+                case 2:
+                    checkBalance();
+                    break;
+                case 3:
+                    checkHistory();
+                    break;
+                case 4:
+                    debitMenu();
+                    break;
+                case 5:
+                    std::cout << "Logging out..." << std::endl;
+                    sendLogout();
+                    heartbeatThread.join();
+                    break;
+                default:
+                    std::cout << "Invalid choice. Please try again." << std::endl;
+                    break;
+                }
+            } while (in != 5);
         }
-        catch (exception& e) {
-            cout << e.what() << endl;
+        else {
+            cout << "Unable to connect to the server." << endl;
         }
-        // Delete key and IV to prevent memory leaks
-        cout << "Goodbye!" << endl;
     }
+    catch (exception& e) {
+        cout << e.what() << endl;
+    }
+    // Delete key and IV to prevent memory leaks
+    cout << "Goodbye!" << endl;
     delete[] aesKey;
     delete[] iv;
 }

@@ -12,6 +12,7 @@
 #include <openssl/rand.h>
 #include <chrono>
 #include <seal/seal.h>
+#include <iomanip>
 
 #define PUB_KEY_FILE "RSAPub.pem"
 #define PRI_KEY_FILE "RSAPri.pem"
@@ -439,7 +440,7 @@ int aesAddBenchmarking(int iterations) {
         aesAvg += ms;
     }
     aesAvg /= iterations;
-    cout << "Average time for AES-256: "<< aesAvg << " microseconds" << endl;
+    cout << "Average time for AES-256: " << aesAvg << " microseconds" << endl;
     return aesAvg;
 }
 
@@ -484,6 +485,53 @@ int ckksAesAddBenchmarking(int iterations) {
     }
     ckksAvg /= iterations;
     cout << "Average time for the CKKS/AES-256 hybrid on the same settings as the banking systems: " << ckksAvg << " microseconds" << endl;
+    return ckksAvg;
+}
+
+int ckksAesAddBenchmarkingRelin(int iterations) {
+    int ckksAvg = 0;
+    seal::EncryptionParameters params;
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key;
+    key = keyGen.secret_key();
+    seal::Encryptor encryptor(context, key);
+    seal::Decryptor decryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Evaluator eval(context);
+    seal::RelinKeys relinKeys;
+    keyGen.create_relin_keys(relinKeys);
+    double scale = pow(2, 20);
+    double lowerBound = 0.00;
+    double upperBound = 10000.00;
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    default_random_engine re;
+    unsigned char* aesKey = new unsigned char[256];
+    unsigned char* iv = new unsigned char[128];
+    GenerateAESKey(aesKey, iv);
+    for (int i = 0; i < iterations; ++i) {
+        double amount = unif(re);
+        double toAdd = unif(re);
+        wstring encToAdd = aesEncrypt(to_string(toAdd), aesKey, iv);
+        seal::Plaintext plain;
+        seal::Ciphertext cipher;
+        encoder.encode(amount, scale, plain);
+        encryptor.encrypt_symmetric(plain, cipher);
+        auto start = chrono::high_resolution_clock::now();
+        string strToAdd = aesDecrypt(encToAdd, aesKey, iv);
+        toAdd = stod(strToAdd);
+        seal::Ciphertext cipher2;
+        encoder.encode(toAdd, scale, plain);
+        encryptor.encrypt_symmetric(plain, cipher2);
+        eval.add_inplace(cipher, cipher2);
+        eval.relinearize_inplace(cipher, relinKeys);
+        auto end = chrono::high_resolution_clock::now();
+        auto ms = chrono::duration_cast<chrono::microseconds>(end - start).count();
+        ckksAvg += ms;
+    }
+    ckksAvg /= iterations;
+    cout << "Average time for CKKS while relinearising: " << ckksAvg << " microseconds" << endl;
     return ckksAvg;
 }
 
@@ -595,6 +643,53 @@ int ckksAesSubBenchmarking(int iterations) {
     }
     ckksAvg /= iterations;
     cout << "Average time for the CKKS/AES-256 hybrid on the same settings as the banking systems: " << ckksAvg << " microseconds" << endl;
+    return ckksAvg;
+}
+
+int ckksAesSubBenchmarkingRelin(int iterations) {
+    int ckksAvg = 0;
+    seal::EncryptionParameters params;
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key;
+    key = keyGen.secret_key();
+    seal::Encryptor encryptor(context, key);
+    seal::Decryptor decryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Evaluator eval(context);
+    seal::RelinKeys relinKeys;
+    keyGen.create_relin_keys(relinKeys);
+    double scale = pow(2, 20);
+    double lowerBound = 0.00;
+    double upperBound = 10000.00;
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    default_random_engine re;
+    unsigned char* aesKey = new unsigned char[256];
+    unsigned char* iv = new unsigned char[128];
+    GenerateAESKey(aesKey, iv);
+    for (int i = 0; i < iterations; ++i) {
+        double amount = unif(re);
+        double toAdd = unif(re);
+        wstring encToAdd = aesEncrypt(to_string(toAdd), aesKey, iv);
+        seal::Plaintext plain;
+        seal::Ciphertext cipher;
+        encoder.encode(amount, scale, plain);
+        encryptor.encrypt_symmetric(plain, cipher);
+        auto start = chrono::high_resolution_clock::now();
+        string strToAdd = aesDecrypt(encToAdd, aesKey, iv);
+        toAdd = stod(strToAdd);
+        seal::Ciphertext cipher2;
+        encoder.encode(toAdd, scale, plain);
+        encryptor.encrypt_symmetric(plain, cipher2);
+        eval.sub_inplace(cipher, cipher2);
+        eval.relinearize_inplace(cipher, relinKeys);
+        auto end = chrono::high_resolution_clock::now();
+        auto ms = chrono::duration_cast<chrono::microseconds>(end - start).count();
+        ckksAvg += ms;
+    }
+    ckksAvg /= iterations;
+    cout << "Average time for CKKS while relinearising: " << ckksAvg << " microseconds" << endl;
     return ckksAvg;
 }
 
@@ -844,30 +939,394 @@ int ckksDecryptBenchmark(int iterations) {
     cout << "Average time for CKKS/AES-256 hybrid on the same settings as the banking system: " << ckksAvg << " microseconds" << endl;
     return ckksAvg;
 }
+
+int relinTest(int iterations) {
+    seal::Ciphertext cipher1, cipher2;
+    seal::Plaintext plain1, plain2;
+    seal::EncryptionParameters params;
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key = keyGen.secret_key();
+    seal::Encryptor encryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Decryptor decryptor(context, key);
+    seal::Evaluator eval(context);
+    double track = 0.00;
+    double start = 0.00;
+    double toAdd = 0.01;
+    double scale = pow(2, 20);
+    double prev = 0.00;
+    int avgTime = 0;
+    vector<double> result;
+    result.push_back(prev);
+    encoder.encode(start, scale, plain1);
+    encryptor.encrypt_symmetric(plain1, cipher1);
+    for (int i = 0; i < iterations; ++i) {
+        track += toAdd;
+        prev = result[0];
+        encoder.encode(toAdd, scale, plain2);
+        encryptor.encrypt_symmetric(plain2, cipher2);
+        auto start = chrono::high_resolution_clock::now();
+        eval.add_inplace(cipher1, cipher2);
+        auto fin = chrono::high_resolution_clock::now();
+        auto taken = chrono::duration_cast<chrono::microseconds>(fin - start).count();
+        avgTime += taken;
+        decryptor.decrypt(cipher1, plain1);
+        encoder.decode(plain1, result);
+        stringstream ss;
+        ss.precision(2);
+        ss.setf(ios::fixed);
+        ss << result[0];
+        string out = ss.str();
+        ss.str(string());
+        ss << track;
+        string out2 = ss.str();
+        if (out2.compare(out) != 0) {
+            cout << "Expected: " << track << endl;
+            cout << "Result: " << out << endl;
+            cout << "Thread " << iterations << " lost accuracy at " << i << " iterations." << endl;
+            cout << "Average time: " << avgTime / i << "microseconds" << endl;
+            return (avgTime / i);
+        }
+    }
+    cout << "Expected: " << track << endl;
+    cout << "Received: " << result[0] << endl;
+    cout << "Average time for " << iterations << " iterations: " << avgTime / iterations << " microseconds" << endl;
+    return (avgTime / iterations);
+}
+
+int relinTest2(int iterations) {
+    seal::Ciphertext cipher1, cipher2;
+    seal::Plaintext plain1, plain2;
+    seal::EncryptionParameters params;
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key = keyGen.secret_key();
+    seal::Encryptor encryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Decryptor decryptor(context, key);
+    seal::Evaluator eval(context);
+    seal::RelinKeys relinKeys;
+    keyGen.create_relin_keys(relinKeys);
+    double track = 0.00;
+    double start = 0.00;
+    double toAdd = 0.01;
+    double scale = pow(2, 20);
+    double prev = 0.00;
+    int avgTime = 0;
+    vector<double> result;
+    result.push_back(prev);
+    encoder.encode(start, scale, plain1);
+    encryptor.encrypt_symmetric(plain1, cipher1);
+    for (int i = 0; i < iterations; ++i) {
+        track += toAdd;
+        prev = result[0];
+        encoder.encode(toAdd, scale, plain2);
+        encryptor.encrypt_symmetric(plain2, cipher2);
+        auto start = chrono::high_resolution_clock::now();
+        eval.add_inplace(cipher1, cipher2);
+        eval.relinearize_inplace(cipher1, relinKeys);
+        auto fin = chrono::high_resolution_clock::now();
+        auto taken = chrono::duration_cast<chrono::microseconds>(fin - start).count();
+        avgTime += taken;
+        decryptor.decrypt(cipher1, plain1);
+        encoder.decode(plain1, result);
+        stringstream ss;
+        ss.precision(2);
+        ss.setf(ios::fixed);
+        ss << result[0];
+        string out = ss.str();
+        ss.str(string());
+        ss << track;
+        string out2 = ss.str();
+        if (out2.compare(out) != 0) {
+            cout << "Expected: " << track << endl;
+            cout << "Result: " << out << endl;
+            cout << "Thread " << iterations << " lost accuracy at " << i << " iterations." << endl;
+            cout << "Average time: " << avgTime / i << "microseconds" << endl;
+            return (avgTime / i);
+        }
+    }
+    cout << "Expected: " << track << endl;
+    cout << "Received: " << result[0] << endl;
+    cout << "Average time for " << iterations << " iterations: " << avgTime / iterations << " microseconds" << endl;
+    return (avgTime / iterations);
+}
+
+int relinTest3(int iterations) {
+    seal::Ciphertext cipher1, cipher2;
+    seal::Plaintext plain1, plain2;
+    seal::EncryptionParameters params;
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key = keyGen.secret_key();
+    seal::Encryptor encryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Decryptor decryptor(context, key);
+    seal::Evaluator eval(context);
+    int runs = 0;
+    for (int i = 0; i < iterations; ++i) {
+        int counter = 0;
+        double track = 0.00;
+        double start = 0.00;
+        double toAdd = 0.01;
+        double scale = pow(2, 20);
+        double prev = 0.00;
+        vector<double> result;
+        result.push_back(prev);
+        encoder.encode(start, scale, plain1);
+        encryptor.encrypt_symmetric(plain1, cipher1);
+        while (true) {
+            track += toAdd;
+            prev = result[0];
+            encoder.encode(toAdd, scale, plain2);
+            encryptor.encrypt_symmetric(plain2, cipher2);
+            eval.add_inplace(cipher1, cipher2);
+            decryptor.decrypt(cipher1, plain1);
+            encoder.decode(plain1, result);
+            stringstream ss;
+            ss.precision(2);
+            ss.setf(ios::fixed);
+            ss << result[0];
+            string out = ss.str();
+            ss.str(string());
+            ss << track;
+            string out2 = ss.str();
+            if (out2.compare(out) != 0) {
+                runs += counter;
+                break;
+            }
+            ++counter;
+        }
+    }
+    cout << "Without relin: " << (runs / iterations) << endl;
+    return runs / iterations;
+}
+
+
+int relinTest4(int iterations) {
+    seal::Ciphertext cipher1, cipher2;
+    seal::Plaintext plain1, plain2;
+    seal::EncryptionParameters params;
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key = keyGen.secret_key();
+    seal::Encryptor encryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Decryptor decryptor(context, key);
+    seal::Evaluator eval(context);
+    seal::RelinKeys relinKeys;
+    keyGen.create_relin_keys(relinKeys);
+    int runs = 0;
+    for (int i = 0; i < iterations; ++i) {
+        int counter = 0;
+        double track = 0.00;
+        double start = 0.00;
+        double toAdd = 0.01;
+        double scale = pow(2, 20);
+        double prev = 0.00;
+        vector<double> result;
+        result.push_back(prev);
+        encoder.encode(start, scale, plain1);
+        encryptor.encrypt_symmetric(plain1, cipher1);
+        while (true) {
+            track += toAdd;
+            prev = result[0];
+            encoder.encode(toAdd, scale, plain2);
+            encryptor.encrypt_symmetric(plain2, cipher2);
+            eval.add_inplace(cipher1, cipher2);
+            eval.relinearize_inplace(cipher1, relinKeys);
+            decryptor.decrypt(cipher1, plain1);
+            encoder.decode(plain1, result);
+            stringstream ss;
+            ss.precision(2);
+            ss.setf(ios::fixed);
+            ss << result[0];
+            string out = ss.str();
+            ss.str(string());
+            ss << track;
+            string out2 = ss.str();
+            if (out2.compare(out) != 0) {
+                runs += counter;
+                break;
+            }
+            ++counter;
+        }
+    }
+    cout << "With relin:" << (runs / iterations) << endl;
+    return runs / iterations;
+}
+
+vector<int> relinTest5(int iterations) {
+    seal::Ciphertext cipher1, cipher2;
+    seal::Plaintext plain1, plain2;
+    seal::EncryptionParameters params;
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key = keyGen.secret_key();
+    seal::Encryptor encryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Decryptor decryptor(context, key);
+    seal::Evaluator eval(context);
+    seal::RelinKeys relinKeys;
+    keyGen.create_relin_keys(relinKeys);
+    vector<int> runs;
+    for (int i = 0; i < iterations; ++i) {
+        int counter = 0;
+        double track = 0.00;
+        double start = 0.00;
+        double toAdd = 0.01;
+        double scale = pow(2, 20);
+        double prev = 0.00;
+        vector<double> result;
+        result.push_back(prev);
+        encoder.encode(start, scale, plain1);
+        encryptor.encrypt_symmetric(plain1, cipher1);
+        while (true) {
+            track += toAdd;
+            prev = result[0];
+            encoder.encode(toAdd, scale, plain2);
+            encryptor.encrypt_symmetric(plain2, cipher2);
+            eval.add_inplace(cipher1, cipher2);
+            eval.relinearize_inplace(cipher1, relinKeys);
+            decryptor.decrypt(cipher1, plain1);
+            encoder.decode(plain1, result);
+            stringstream ss;
+            ss.precision(2);
+            ss.setf(ios::fixed);
+            ss << result[0];
+            string out = ss.str();
+            ss.str(string());
+            ss << track;
+            string out2 = ss.str();
+            if (out2.compare(out) != 0) {
+                runs.push_back(counter);
+                break;
+            }
+            ++counter;
+        }
+    }
+    return runs;
+}
+
+vector<int> relinTest6(int iterations) {
+    seal::Ciphertext cipher1, cipher2;
+    seal::Plaintext plain1, plain2;
+    seal::EncryptionParameters params;
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key = keyGen.secret_key();
+    seal::Encryptor encryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Decryptor decryptor(context, key);
+    seal::Evaluator eval(context);
+    vector<int> runs;
+    for (int i = 0; i < iterations; ++i) {
+        int counter = 0;
+        double track = 0.00;
+        double start = 0.00;
+        double toAdd = 0.01;
+        double scale = pow(2, 20);
+        double prev = 0.00;
+        vector<double> result;
+        result.push_back(prev);
+        encoder.encode(start, scale, plain1);
+        encryptor.encrypt_symmetric(plain1, cipher1);
+        while (true) {
+            track += toAdd;
+            prev = result[0];
+            encoder.encode(toAdd, scale, plain2);
+            encryptor.encrypt_symmetric(plain2, cipher2);
+            eval.add_inplace(cipher1, cipher2);
+            decryptor.decrypt(cipher1, plain1);
+            encoder.decode(plain1, result);
+            stringstream ss;
+            ss.precision(2);
+            ss.setf(ios::fixed);
+            ss << result[0];
+            string out = ss.str();
+            ss.str(string());
+            ss << track;
+            string out2 = ss.str();
+            if (out2.compare(out) != 0) {
+                runs.push_back(counter);
+                break;
+            }
+            ++counter;
+        }
+    }
+    return runs;
+}
+
+
+
+
 int main()
 {
     try {
-        int iterations = 10000;
+        //vector<int> iterations = { 10, 100, 1000, 10000 };
+
+        //cout << "WIthout relinearisation" << endl;
+        //for (int i : iterations) {
+        //    relinTest(i);
+        //}
+
+        //cout << "With relinearisation: " << endl;
+        //for (int i : iterations) {
+        //    relinTest2(i);
+        //}
+        /*thread relin1(relinTest3, 1000);
+        thread relin2(relinTest4, 1000);
+
+        relin1.join();
+        relin2.join();*/
+        vector<int> runs = relinTest5(1000);
+        ofstream out5("relinTest5.txt");
+
+        for (int i = 0; i < runs.size(); ++i) {
+            out5 << runs[i] << endl;
+        }
+        
+        out5.close();
+        ofstream out6("relinTest6.txt");
+        runs = relinTest6(1000);
+        for (int i = 0; i < runs.size(); ++i) {
+            out6 << runs[i] << endl;
+        }
+
+        out6.close();
+
+        /*
         cout << "Addition:" << endl;
         thread aesAddThread(aesAddBenchmarking, iterations);
         thread rsaAddThread1(rsaAddBenchmarking, iterations, 2048);
         thread ckksAddThread(ckksAesAddBenchmarking, iterations);
         thread rsaAddThread2(rsaAddBenchmarking, iterations, 4096);
+        thread ckksAddThread2(ckksAesAddBenchmarkingRelin, iterations);
         aesAddThread.join();
         rsaAddThread1.join();
         ckksAddThread.join();
         rsaAddThread2.join();
+        ckksAddThread2.join();
 
         cout << "Subtraction:" << endl;
         thread aesSubThread(aesSubBenchmarking, iterations);
         thread rsaSubThread1(rsaSubBenchmarking, iterations, 2048);
         thread ckksSubThread(ckksAesSubBenchmarking, iterations);
         thread rsaSubThread2(rsaSubBenchmarking, iterations, 4096);
+        thread ckksSubThread2(ckksAesSubBenchmarkingRelin, iterations);
 
         aesSubThread.join();
         rsaSubThread1.join();
         ckksSubThread.join();
         rsaSubThread2.join();
+        ckksSubThread2.join();
 
         cout << "Multiplication:" << endl;
         thread aesMultThread(aesMultBenchmarking, iterations);
@@ -892,6 +1351,7 @@ int main()
         rsaDecryptThread1.join();
         ckksDecryptThread.join();
         rsaDecryptThread2.join();
+        */
     }
     catch (exception& e) {
         cout << e.what() << endl;
