@@ -71,6 +71,8 @@ void loadCKKSParams(seal::EncryptionParameters& params) {
 
 bool sendBalance(http_request request) {
     try {
+        wcout << serverIP << endl;
+        wcout << request.get_remote_address() << endl;
         if (request.get_remote_address().compare(serverIP) == 0) {
             wstring fileName = request.relative_uri().to_string();
             fileName = fileName.substr(1, fileName.length());
