@@ -655,8 +655,6 @@ void heartbeat() {
             auto response = client.request(methods::GET).get();
             if (response.status_code() != status_codes::OK) {
                 wcout << response.extract_utf16string().get() << endl;
-            }
-            else {
                 cout << "Heartbeat could not be sent" << endl;
                 exit(1);
             }
@@ -665,6 +663,7 @@ void heartbeat() {
     }
     catch (exception& e) {
         cout << "Heartbeat could not be sent" << endl;
+        cout << e.what() << endl;
         exit(1);
     }
 }
