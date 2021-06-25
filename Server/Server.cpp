@@ -431,7 +431,7 @@ string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
 http::status_code getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
     http_client client(cloudDNS + L":8081/balance");
-    cout << "File requested: " << balAddress << endl;
+    wcout << "File requested: " << balAddress << endl;
     auto response = client.request(methods::GET, balAddress);
     auto buf = response.get().body().streambuf();
     if (response.get().status_code() == status_codes::OK) {
@@ -1365,7 +1365,6 @@ bool serverRemoveDebit(http_request request) {
                                 cout << address << endl;
 
                                 http_client client(cloudDNS + L":8081/debits");
-                                auto response = client.request(methods::DEL, add);
                                 debits->removeDebit(d);
                                 remove(address.c_str());
                                 cout << "Deleted debit with ID" << id << endl;

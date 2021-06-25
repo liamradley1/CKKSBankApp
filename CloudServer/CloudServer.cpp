@@ -226,30 +226,6 @@ bool directDebit(http_request request) {
     }
 }
 
-bool deleteDebit(http_request request) {
-    try {
-        if (request.get_remote_address().compare(serverIP) == 0) {
-            wstring fileName = request.relative_uri().to_string();
-            wcout << fileName << endl;
-            fileName = fileName.substr(1, fileName.length());
-            string address = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(fileName);
-            cout << address << endl;
-            remove(address.c_str());
-            request.reply(status_codes::OK);
-            return true;
-        }
-        else {
-            request.reply(status_codes::Forbidden, L"Could not authenticate as the main server");
-            return false;
-        }
-    }
-    catch (exception& e) {
-        cout << e.what() << endl;
-        request.reply(status_codes::InternalError);
-        return false;
-    }
-}
-
 int main()
 {
     try {
@@ -272,7 +248,6 @@ int main()
 
         http_listener debitListener(cloudDNS + L":8081/debits");
         debitListener.support(methods::POST, directDebit);
-        debitListener.support(methods::DEL, deleteDebit);
         debitListener
             .open()
             .then([&debitListener]() {wcout << (L"Starting to listen for direct debit requests") << endl; })
