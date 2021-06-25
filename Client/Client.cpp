@@ -585,7 +585,7 @@ status_code addDebit() {
         wstring toSend = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(collection));
         wstring encId = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID));
         auto response = client.request(methods::POST, encId, toSend);
-        wcout << response.get().extract_utf16string() << endl;
+        wcout << response.get().extract_utf16string().get() << endl;
     }
     catch (std::exception& e) {
         std::cout << "Something went wrong!" << std::endl;

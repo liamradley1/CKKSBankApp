@@ -1306,6 +1306,7 @@ bool serverRemoveDebit(http_request request) {
         catch (exception& e) {
             cout << e.what() << endl;
             delete[] aesKey;
+            cout << "Invalid credentials presented" << endl;
             request.reply(status_codes::Forbidden, L"Invalid login credentials");
             return false;
         }
@@ -1316,6 +1317,7 @@ bool serverRemoveDebit(http_request request) {
             delete[] iv;
             delete[] aesKey;
             cout << e.what() << endl;
+            cout << "Invalid credentials presented" << endl;
             request.reply(status_codes::Forbidden, L"Invalid login credentials");
             return false;
         }
@@ -1349,6 +1351,7 @@ bool serverRemoveDebit(http_request request) {
                 if (debits == nullptr) {
                     delete acc;
                     delete debits;
+                    cout << "No debits exist to check" << endl;
                     request.reply(status_codes::NotFound, L"Invalid debit ID");
                     return false;
                 }
@@ -1366,13 +1369,15 @@ bool serverRemoveDebit(http_request request) {
                                 auto response = client.request(methods::DEL, add);
                                 debits->removeDebit(d);
                                 remove(address.c_str());
-                                request._reply_if_not_already(status_codes::OK);
+                                cout << "Deleted debit with ID" << id << endl;
+                                request.reply(status_codes::OK, L"Debit deleted!");
                                 delete debits;
                                 delete acc;
                                 return true;
                             }
                         }
                     }
+                    cout << "Debit not found" << endl;
                     request.reply(status_codes::NotFound, L"Invalid debit ID");
                     delete debits;
                     delete acc;
