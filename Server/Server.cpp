@@ -431,16 +431,15 @@ string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
 http::status_code getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
     http_client client(cloudDNS + L":8081/balance");
+    cout << "File requested: " << balAddress << endl;
     auto response = client.request(methods::GET, balAddress);
     auto buf = response.get().body().streambuf();
-    cout << response.get().status_code() << endl;
     if (response.get().status_code() == status_codes::OK) {
         string contents = "";
         while (!buf.is_eof()) {
             if (buf.getc().get() != -2) // Gets rid of weird requiring 'async required' bugs
                 contents += buf.sbumpc();
         }
-        cout << "About to write to file" << endl;
         try {
             ofstream outFile(balAddress, std::ios::binary);
             outFile << contents;

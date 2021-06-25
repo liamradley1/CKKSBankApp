@@ -116,6 +116,16 @@ bool transaction(http_request request) {
             uri = uri.substr(index + 1, uri.length());
             wcout << "Updated URI: " << uri << endl;
             wstring amountFile = uri;
+            if (amountFile.substr(amountFile.length() - 3, amountFile.length()).compare(L".txt") != 0) {
+                cout << "Invalid file type." << endl;
+                request.reply(status_codes::BadRequest, L"Invalid file sent");
+                return false;
+            }
+            else if (filesystem::exists(amountFile)) {
+                cout << "Attempt to overwrite pre-existing amount file" << endl;
+                request.reply(status_codes::BadGateway, L"Invalid file sent");
+                return false;
+            }
             wcout << "Amount file: " << amountFile << endl;
             if (filesystem::exists(fileFrom)) {
                 // Extract the amount file from the request and create a file for storage
@@ -161,57 +171,6 @@ bool transaction(http_request request) {
         }
         else {
             request.reply(status_codes::Forbidden, L"Not authorised to make request");
-            return false;
-        }
-    }
-    catch (exception& e) {
-        cout << e.what() << endl;
-        request.reply(status_codes::InternalError);
-        return false;
-    }
-}
-
-bool additionalFile(http_request request) { // Provided the .txt file isn't a malicious payload (which is unlikely) we're good. Otherwise this isn't great
-                                            // Also it's not ideal how someone can just DOS the cloud server by spamming this link after spoofing the main server's IP and loading up the instance with massive .txt files
-    try {
-        if (request.get_remote_address().compare(serverIP) == 0) {
-            wcout << "Additional file sent" << endl;
-            wstring uri = request.relative_uri().to_string();
-            wcout << uri << endl;
-            uri = uri.substr(1, uri.length());
-            cout << uri.length() << endl;
-            if (uri.length() <= 4) {
-                request.reply(status_codes::BadRequest, L"Not a valid file");
-                return false;
-            }
-            wstring type = uri.substr(uri.length() - 4, uri.length());
-            wcout << type << endl;
-
-            if (type.compare(L".txt") != 0 && !filesystem::exists(uri)) { // No overwriting of files via this method, and no accepting of anything that isn't a simple .txt file
-                request.reply(status_codes::Forbidden, L"Not a valid file");
-                return false;
-            }
-            else {
-                string contents = "";
-                auto buf = request.body().streambuf();
-                while (!buf.is_eof()) {
-                    if (buf.getc().get() != -2) {
-                        contents += buf.sbumpc();
-                    }
-                }
-                if (contents.length() > 328 * 1024 * 1024 * 8) { // If the length is bigger than 328kB then we can be sure that this is not a relevant ciphertext.
-                    request.reply(status_codes::Forbidden, L"Not a valid file");
-                    return false;
-                }
-                    std::ofstream outFile(uri, std::ios::binary);
-                    outFile << contents;
-                    outFile.close();
-                    request.reply(status_codes::OK);
-                    return true;
-            }
-        }
-        else {
-            request.reply(status_codes::Forbidden, L"Cannot authenticate as the main server");
             return false;
         }
     }
@@ -305,7 +264,6 @@ int main()
             .wait();
 
         http_listener transferListener(cloudDNS + L":8081/transfer");
-        transferListener.support(methods::POST, additionalFile);
         transferListener.support(methods::PUT, transaction);
         transferListener
             .open()

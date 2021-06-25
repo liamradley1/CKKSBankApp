@@ -504,20 +504,27 @@ status_code checkBalance() {
 }
 
 status_code checkHistory() {
-    http_client client(serverDNS + L":8080/history");
-    string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
-    wstring toSend = aesEncrypt(toEncrypt);
-    auto response = client.request(methods::GET, toSend).get();
-    if (response.status_code() == status_codes::OK) {
-        cout << status_codes::OK << endl;
-        wstring body = response.extract_utf16string().get();
-        string history = aesDecrypt(body);
-        cout << history << endl;
+    try {
+        http_client client(serverDNS + L":8080/history");
+        string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
+        wstring toSend = aesEncrypt(toEncrypt);
+        auto response = client.request(methods::GET, toSend).get();
+        if (response.status_code() == status_codes::OK) {
+            cout << status_codes::OK << endl;
+            wstring body = response.extract_utf16string().get();
+            string history = aesDecrypt(body);
+            cout << history << endl;
+        }
+        else {
+            wcout << response.extract_utf16string().get() << endl;
+        }
+        return response.status_code();
     }
-    else {
-        wcout << response.extract_utf16string().get() << endl;
+    catch (exception& e) {
+        cout << e.what() << endl;
+        cout << "Please try again." << endl;
     }
-    return response.status_code();
+    return status_codes::InternalError;
 }
 
 status_code addDebit() {
@@ -595,17 +602,23 @@ status_code addDebit() {
 }
 
 void viewDebits() {
-    http_client client(serverDNS + L":8080/debits");
-    string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
-    wstring toSend = aesEncrypt(toEncrypt);
-    auto response = client.request(methods::GET, toSend);
-    if (response.get().status_code() == status_codes::OK) {
-        wstring body = response.get().extract_utf16string().get();
-        string details = aesDecrypt(body);
-        cout << details << endl;
+    try {
+        http_client client(serverDNS + L":8080/debits");
+        string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);
+        wstring toSend = aesEncrypt(toEncrypt);
+        auto response = client.request(methods::GET, toSend);
+        if (response.get().status_code() == status_codes::OK) {
+            wstring body = response.get().extract_utf16string().get();
+            string details = aesDecrypt(body);
+            cout << details << endl;
+        }
+        else {
+            wcout << response.get().extract_utf16string().get() << endl;
+        }
     }
-    else {
-        wcout << response.get().extract_utf16string().get() << endl;
+    catch (exception& e) {
+        cout << e.what() << endl;
+        cout << "Request timed out. Please try again." << endl;
     }
 }
 
