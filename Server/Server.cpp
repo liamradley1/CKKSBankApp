@@ -1271,8 +1271,9 @@ bool serverAddDebits(http_request request) {
                             if (response.get().status_code() == status_codes::OK) {
                                 DirectDebit* debit = new DirectDebit(0, from, to, address, expression, nowTime);
                                 dat->addDebit(debit, regString, *context, *params);
+                                cout << "Direct debit created from account " << from->getId() << " to account " << to->getId() << endl;
                                 delete debit;
-                                request._reply_if_not_already(status_codes::OK);
+                                request.reply(status_codes::OK, L"Debit created successfully!");
                                 delete from;
                                 delete to;
                                 delete debitList;

@@ -585,9 +585,7 @@ status_code addDebit() {
         wstring toSend = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(collection));
         wstring encId = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID));
         auto response = client.request(methods::POST, encId, toSend);
-        if (response.get().status_code() != status_codes::OK) {
-            wcout << response.get().extract_utf16string().get() << endl;
-        }
+        wcout << response.get().extract_utf16string() << endl;
     }
     catch (std::exception& e) {
         std::cout << "Something went wrong!" << std::endl;
@@ -619,9 +617,7 @@ void removeDebit() {
     wstring toSend = aesEncrypt(input);
     wstring idToSend = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID));
     auto response = client.request(methods::DEL, idToSend, toSend).get();
-    if (response.status_code() != status_codes::OK) {
         wcout << response.extract_utf16string().get() << endl;
-    }
 }
 
 status_code debitMenu() {
