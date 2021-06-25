@@ -1162,6 +1162,7 @@ bool serverAddDebits(http_request request) {
         catch (exception& e) {
             cout << e.what() << endl;
             delete[] aesKey;
+            cout << "Invalid login credentials on request" << endl;
             request.reply(status_codes::Forbidden, L"Invalid login credentials");
             return false;
         }
@@ -1172,6 +1173,7 @@ bool serverAddDebits(http_request request) {
             delete[] iv;
             delete[] aesKey;
             cout << e.what() << endl;
+            cout << "Invalid login credentials on request" << endl;
             request.reply(status_codes::Forbidden, L"Invalid login credentials");
             return false;
         }
@@ -1209,7 +1211,9 @@ bool serverAddDebits(http_request request) {
                     return false;
                 }
                 if (stoi(idString) == 1) {
-                    request.reply(status_codes::BadRequest, L"Invalid recipient acount. Please try again.");
+                    cout << "Attempt to send to admin account" << endl;
+                    request.reply(status_codes::BadRequest, L"Invalid recipient account. Please try again.");
+                    return false;
                 }
                 DebitList* debitList = dat->queryDebits(*context);
                 bool exists = false;
