@@ -952,19 +952,20 @@ int relinTest(int iterations) {
     seal::CKKSEncoder encoder(context);
     seal::Decryptor decryptor(context, key);
     seal::Evaluator eval(context);
+    double lowerBound = 0.00;
+    double upperBound = 1.00;
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    default_random_engine re;
     double track = 0.00;
     double start = 0.00;
-    double toAdd = 0.01;
+    double toAdd;
     double scale = pow(2, 20);
-    double prev = 0.00;
     int avgTime = 0;
-    vector<double> result;
-    result.push_back(prev);
     encoder.encode(start, scale, plain1);
     encryptor.encrypt_symmetric(plain1, cipher1);
     for (int i = 0; i < iterations; ++i) {
+        toAdd = round(100 * unif(re)) / 100;
         track += toAdd;
-        prev = result[0];
         encoder.encode(toAdd, scale, plain2);
         encryptor.encrypt_symmetric(plain2, cipher2);
         auto start = chrono::high_resolution_clock::now();
@@ -972,26 +973,8 @@ int relinTest(int iterations) {
         auto fin = chrono::high_resolution_clock::now();
         auto taken = chrono::duration_cast<chrono::microseconds>(fin - start).count();
         avgTime += taken;
-        decryptor.decrypt(cipher1, plain1);
-        encoder.decode(plain1, result);
-        stringstream ss;
-        ss.precision(2);
-        ss.setf(ios::fixed);
-        ss << result[0];
-        string out = ss.str();
-        ss.str(string());
-        ss << track;
-        string out2 = ss.str();
-        if (out2.compare(out) != 0) {
-            cout << "Expected: " << track << endl;
-            cout << "Result: " << out << endl;
-            cout << "Thread " << iterations << " lost accuracy at " << i << " iterations." << endl;
-            cout << "Average time: " << avgTime / i << "microseconds" << endl;
-            return (avgTime / i);
-        }
+        
     }
-    cout << "Expected: " << track << endl;
-    cout << "Received: " << result[0] << endl;
     cout << "Average time for " << iterations << " iterations: " << avgTime / iterations << " microseconds" << endl;
     return (avgTime / iterations);
 }
@@ -1014,15 +997,16 @@ int relinTest2(int iterations) {
     double start = 0.00;
     double toAdd = 0.01;
     double scale = pow(2, 20);
-    double prev = 0.00;
     int avgTime = 0;
-    vector<double> result;
-    result.push_back(prev);
+    double lowerBound = 0.00;
+    double upperBound = 1.00;
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    default_random_engine re;
     encoder.encode(start, scale, plain1);
     encryptor.encrypt_symmetric(plain1, cipher1);
     for (int i = 0; i < iterations; ++i) {
+        toAdd = unif(re);
         track += toAdd;
-        prev = result[0];
         encoder.encode(toAdd, scale, plain2);
         encryptor.encrypt_symmetric(plain2, cipher2);
         auto start = chrono::high_resolution_clock::now();
@@ -1031,26 +1015,7 @@ int relinTest2(int iterations) {
         auto fin = chrono::high_resolution_clock::now();
         auto taken = chrono::duration_cast<chrono::microseconds>(fin - start).count();
         avgTime += taken;
-        decryptor.decrypt(cipher1, plain1);
-        encoder.decode(plain1, result);
-        stringstream ss;
-        ss.precision(2);
-        ss.setf(ios::fixed);
-        ss << result[0];
-        string out = ss.str();
-        ss.str(string());
-        ss << track;
-        string out2 = ss.str();
-        if (out2.compare(out) != 0) {
-            cout << "Expected: " << track << endl;
-            cout << "Result: " << out << endl;
-            cout << "Thread " << iterations << " lost accuracy at " << i << " iterations." << endl;
-            cout << "Average time: " << avgTime / i << "microseconds" << endl;
-            return (avgTime / i);
-        }
     }
-    cout << "Expected: " << track << endl;
-    cout << "Received: " << result[0] << endl;
     cout << "Average time for " << iterations << " iterations: " << avgTime / iterations << " microseconds" << endl;
     return (avgTime / iterations);
 }
@@ -1067,12 +1032,16 @@ int relinTest3(int iterations) {
     seal::CKKSEncoder encoder(context);
     seal::Decryptor decryptor(context, key);
     seal::Evaluator eval(context);
+    double lowerBound = 0.00;
+    double upperBound = 1.00;
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    default_random_engine re;
     int runs = 0;
     for (int i = 0; i < iterations; ++i) {
         int counter = 0;
         double track = 0.00;
         double start = 0.00;
-        double toAdd = 0.01;
+        double toAdd;
         double scale = pow(2, 20);
         double prev = 0.00;
         vector<double> result;
@@ -1080,6 +1049,7 @@ int relinTest3(int iterations) {
         encoder.encode(start, scale, plain1);
         encryptor.encrypt_symmetric(plain1, cipher1);
         while (true) {
+            toAdd = round(100 * unif(re)) / 100;
             track += toAdd;
             prev = result[0];
             encoder.encode(toAdd, scale, plain2);
@@ -1122,11 +1092,15 @@ int relinTest4(int iterations) {
     seal::RelinKeys relinKeys;
     keyGen.create_relin_keys(relinKeys);
     int runs = 0;
+    double lowerBound = 0.00;
+    double upperBound = 1.00;
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    default_random_engine re;
     for (int i = 0; i < iterations; ++i) {
         int counter = 0;
         double track = 0.00;
         double start = 0.00;
-        double toAdd = 0.01;
+        double toAdd;
         double scale = pow(2, 20);
         double prev = 0.00;
         vector<double> result;
@@ -1134,6 +1108,7 @@ int relinTest4(int iterations) {
         encoder.encode(start, scale, plain1);
         encryptor.encrypt_symmetric(plain1, cipher1);
         while (true) {
+            toAdd = round(100 * unif(re)) / 100;
             track += toAdd;
             prev = result[0];
             encoder.encode(toAdd, scale, plain2);
@@ -1176,11 +1151,15 @@ vector<int> relinTest5(int iterations) {
     seal::RelinKeys relinKeys;
     keyGen.create_relin_keys(relinKeys);
     vector<int> runs;
+    double lowerBound = 0.00;
+    double upperBound = 1.00;
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    default_random_engine re;
     for (int i = 0; i < iterations; ++i) {
         int counter = 0;
         double track = 0.00;
         double start = 0.00;
-        double toAdd = 0.01;
+        double toAdd;
         double scale = pow(2, 20);
         double prev = 0.00;
         vector<double> result;
@@ -1188,6 +1167,7 @@ vector<int> relinTest5(int iterations) {
         encoder.encode(start, scale, plain1);
         encryptor.encrypt_symmetric(plain1, cipher1);
         while (true) {
+            toAdd = round(100 * unif(re)) / 100;
             track += toAdd;
             prev = result[0];
             encoder.encode(toAdd, scale, plain2);
@@ -1226,12 +1206,16 @@ vector<int> relinTest6(int iterations) {
     seal::CKKSEncoder encoder(context);
     seal::Decryptor decryptor(context, key);
     seal::Evaluator eval(context);
+    double lowerBound = 0.00;
+    double upperBound = 1.00;
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    default_random_engine re;
     vector<int> runs;
     for (int i = 0; i < iterations; ++i) {
         int counter = 0;
         double track = 0.00;
         double start = 0.00;
-        double toAdd = 0.01;
+        double toAdd;
         double scale = pow(2, 20);
         double prev = 0.00;
         vector<double> result;
@@ -1239,6 +1223,7 @@ vector<int> relinTest6(int iterations) {
         encoder.encode(start, scale, plain1);
         encryptor.encrypt_symmetric(plain1, cipher1);
         while (true) {
+            toAdd = round(100 * unif(re)) / 100;
             track += toAdd;
             prev = result[0];
             encoder.encode(toAdd, scale, plain2);
@@ -1264,43 +1249,285 @@ vector<int> relinTest6(int iterations) {
     return runs;
 }
 
+vector<int> relinTest7(int iterations) {
+    seal::Ciphertext cipher1, cipher2;
+    seal::Plaintext plain1, plain2;
+    seal::EncryptionParameters params;
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key = keyGen.secret_key();
+    seal::Encryptor encryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Decryptor decryptor(context, key);
+    seal::Evaluator eval(context);
+    double lowerBound = 1.00;
+    double upperBound = 2.00;
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    default_random_engine re;
+    vector<int> runs;
+    for (int i = 0; i < iterations; ++i) {
+        int counter = 0;
+        try {
+        double track = 1.00;
+        double start = 1.00;
+        double toAdd;
+        double scale = pow(2, 20);
+        double prev = 1.00;
+        vector<double> result;
+        result.push_back(prev);
+        encoder.encode(start, scale, plain1);
+        encryptor.encrypt_symmetric(plain1, cipher1);
+        while (true) {
+            cout << counter << endl;
+            toAdd = round(100 * unif(re)) / 100;
+            track *= toAdd;
+            prev = result[0];
+            encoder.encode(toAdd, scale, plain2);
+            encryptor.encrypt_symmetric(plain2, cipher2);
+            eval.multiply_inplace(cipher1, cipher2);
+            decryptor.decrypt(cipher1, plain1);
+            encoder.decode(plain1, result);
+            stringstream ss;
+            ss.precision(2);
+            ss.setf(ios::fixed);
+            ss << result[0];
+            string out = ss.str();
+            ss.str(string());
+            ss << track;
+            string out2 = ss.str();
+            cout << out2 << endl << out << endl << "_____________" << endl;
+            if (out2.compare(out) != 0) {
+                runs.push_back(counter);
+                break;
+            }
+            ++counter;
+        }
+        }
+        catch (exception& e) {
+            cout << e.what() << endl;
+            runs.push_back(counter);
+        }
+    }
+    return runs;
+}
+
+vector<int> relinTest8(int iterations) {
+    seal::Ciphertext cipher1, cipher2, cipher3;
+    seal::Plaintext plain1, plain2;
+    seal::EncryptionParameters params(seal::scheme_type::ckks);
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key = keyGen.secret_key();
+    seal::Encryptor encryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Decryptor decryptor(context, key);
+    seal::Evaluator eval(context);
+    seal::RelinKeys relinKeys;
+    keyGen.create_relin_keys(relinKeys);
+    double lowerBound = 1.00;
+    double upperBound = 2.00;
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    default_random_engine re;
+    vector<int> runs;
+    for (int i = 0; i < iterations; ++i) {
+        int counter = 0;
+        try {
+            double track = 1.00;
+            double start = 1.00;
+            double toAdd;
+            double scale = pow(2, 20);
+            double prev = 1.00;
+            vector<double> result;
+            encoder.encode(start, scale, plain1);
+            encryptor.encrypt_symmetric(plain1, cipher1);
+            encryptor.encrypt_symmetric(plain1, cipher3);
+            while (true) {
+                cout << counter << endl;
+                toAdd = round(100 * unif(re)) / 100;
+                track *= toAdd;
+                encoder.encode(toAdd, scale, plain2);
+                seal::Ciphertext cipher2;
+                encryptor.encrypt_symmetric(plain2, cipher2);
+                cout << "Before multiplication: " << log2(cipher1.scale()) << endl;
+                cout << "Cipher 2 scale: " << log2(cipher2.scale()) << endl;
+                eval.multiply_plain_inplace(cipher1, plain2);
+                eval.relinearize_inplace(cipher1, relinKeys);
+                decryptor.decrypt(cipher1, plain1);
+                encoder.decode(plain1, result);
+                stringstream ss;
+                ss.precision(2);
+                ss.setf(ios::fixed);
+                ss << result[0];
+                string out = ss.str();
+                ss.str(string());
+                ss << track;
+                string out2 = ss.str();
+                cout << "Expected: " << out2 << endl << "Received: " << out << endl << "_____________" << endl;
+                if (out2.compare(out) != 0) {
+                    runs.push_back(counter);
+                    break;
+                }
+                ++counter;
+                start = result[0];
+                encoder.encode(start, scale, plain1);
+                encryptor.encrypt_symmetric(plain1, cipher1);
+            }
+        }
+        catch (exception& e) {
+            cout << e.what() << endl;
+            runs.push_back(counter);
+        }
+    }
+    return runs;
+}
+
+
+int relinTest9(int iterations) {
+    try {
+        seal::Ciphertext cipher1, cipher2;
+        seal::Plaintext plain1, plain2;
+        seal::EncryptionParameters params;
+        loadCKKSParams(params);
+        seal::SEALContext context(params);
+        seal::KeyGenerator keyGen(context);
+        seal::SecretKey key = keyGen.secret_key();
+        seal::Encryptor encryptor(context, key);
+        seal::CKKSEncoder encoder(context);
+        seal::Decryptor decryptor(context, key);
+        seal::Evaluator eval(context);
+        double lowerBound = 1.00;
+        double upperBound = 2.00;
+        std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+        default_random_engine re;
+        double start = 1.00;
+        double toAdd;
+        double scale = pow(2, 20);
+        int avgTime = 0;
+        encoder.encode(start, scale, plain1);
+        encryptor.encrypt_symmetric(plain1, cipher1);
+        for (int i = 0; i < iterations; ++i) {
+            toAdd = round(100 * unif(re)) / 100;
+            encoder.encode(toAdd, scale, plain2);
+            encryptor.encrypt_symmetric(plain2, cipher2);
+            auto start = chrono::high_resolution_clock::now();
+            eval.multiply_inplace(cipher1, cipher2);
+            auto fin = chrono::high_resolution_clock::now();
+            auto taken = chrono::duration_cast<chrono::microseconds>(fin - start).count();
+            avgTime += taken;
+            encryptor.encrypt_symmetric(plain1, cipher1);
+        }
+        cout << "Average time for " << iterations << " iterations: " << avgTime / iterations << " microseconds" << endl;
+        return (avgTime / iterations);
+    }
+    catch (exception& e) {
+        cout << e.what() << endl;
+    }
+}
+
+int relinTest10(int iterations) {
+    seal::Ciphertext cipher1, cipher2;
+    seal::Plaintext plain1, plain2;
+    seal::EncryptionParameters params;
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key = keyGen.secret_key();
+    seal::Encryptor encryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Decryptor decryptor(context, key);
+    seal::Evaluator eval(context);
+    seal::RelinKeys relinKeys;
+    keyGen.create_relin_keys(relinKeys);
+    double lowerBound = 1.00;
+    double upperBound = 2.00;
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    default_random_engine re;
+    double start = 1.00;
+    double toAdd;
+    double scale = pow(2, 20);
+    int avgTime = 0;
+    encoder.encode(start, scale, plain1);
+    encryptor.encrypt_symmetric(plain1, cipher1);
+    for (int i = 0; i < iterations; ++i) {
+        toAdd = round(100 * unif(re)) / 100;
+        encoder.encode(toAdd, scale, plain2);
+        encryptor.encrypt_symmetric(plain2, cipher2);
+        auto start = chrono::high_resolution_clock::now();
+        eval.multiply_inplace(cipher1, cipher2);
+        eval.relinearize_inplace(cipher1, relinKeys);
+        auto fin = chrono::high_resolution_clock::now();
+        auto taken = chrono::duration_cast<chrono::microseconds>(fin - start).count();
+        avgTime += taken;
+        encryptor.encrypt_symmetric(plain1, cipher1);
+    }
+    cout << "Average time for " << iterations << " iterations: " << avgTime / iterations << " microseconds" << endl;
+    return (avgTime / iterations);
+}
+
+
+
 
 
 
 int main()
 {
     try {
-        //vector<int> iterations = { 10, 100, 1000, 10000 };
+        vector<int> iterations = { 10, 100, 1000, 10000 };
 
-        //cout << "WIthout relinearisation" << endl;
-        //for (int i : iterations) {
+        cout << "Without relinearisation" << endl;
+        for (int i : iterations) {
         //    relinTest(i);
-        //}
+            relinTest9(i);
+        }
 
-        //cout << "With relinearisation: " << endl;
-        //for (int i : iterations) {
+        cout << "With relinearisation: " << endl;
+        for (int i : iterations) {
         //    relinTest2(i);
-        //}
-        /*thread relin1(relinTest3, 1000);
-        thread relin2(relinTest4, 1000);
+            relinTest10(i);
+        }
+        
+        //thread relin1(relinTest3, 1000);
+        //thread relin2(relinTest4, 1000);
 
-        relin1.join();
-        relin2.join();*/
-        vector<int> runs = relinTest5(1000);
-        ofstream out5("relinTest5.txt");
+        //relin1.join();
+        //relin2.join();
+
+        /*vector<int> runs = relinTest6(1000);
+        ofstream out5("relinTest6.txt");
 
         for (int i = 0; i < runs.size(); ++i) {
             out5 << runs[i] << endl;
         }
         
         out5.close();
-        ofstream out6("relinTest6.txt");
-        runs = relinTest6(1000);
+        ofstream out6("relinTest5.txt");
+        vector<int> runs = relinTest5(1000);
         for (int i = 0; i < runs.size(); ++i) {
             out6 << runs[i] << endl;
         }
+        cout << 5 << endl;
+        out6.close();*/
 
-        out6.close();
+        //ofstream out7("relinTest7.txt");
+        //vector<int> runs = relinTest7(1000);
+        //for (int i = 0; i < runs.size(); ++i) {
+        //    out7 << runs[i] << endl;
+        //}
+        //cout << 7 << endl;
+        //out7.close();
+
+        //ofstream out8("relinTest8.txt");
+        //runs = relinTest8(1000);
+        //for (int i = 0; i < runs.size(); ++i) {
+        //    out8 << runs[i] << endl;
+        //}
+        //cout << 8 << endl;
+        //out8.close();
+
+
+
 
         /*
         cout << "Addition:" << endl;

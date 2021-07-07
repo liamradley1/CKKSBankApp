@@ -71,8 +71,10 @@ void loadCKKSParams(seal::EncryptionParameters& params) {
 
 bool sendBalance(http_request request) {
     try {
-        wcout << serverIP << endl;
-        wcout << request.get_remote_address() << endl;
+        wcout <<"Read server IP: " << serverIP << endl;
+        wcout << "Remote address from: " << request.get_remote_address() << endl;
+        cout << serverIP.length() << endl;
+        cout << request.get_remote_address().length() << endl;
         if (request.get_remote_address().compare(serverIP) == 0) {
             wstring fileName = request.relative_uri().to_string();
             fileName = fileName.substr(1, fileName.length());
@@ -116,7 +118,8 @@ bool transaction(http_request request) {
             uri = uri.substr(index + 1, uri.length());
             wcout << "Updated URI: " << uri << endl;
             wstring amountFile = uri;
-            if (amountFile.substr(amountFile.length() - 3, amountFile.length()).compare(L".txt") != 0) {
+            wcout << amountFile.substr(amountFile.length() - 4, amountFile.length()) << endl;
+            if (amountFile.substr(amountFile.length() - 4, amountFile.length()).compare(L".txt") != 0) {
                 cout << "Invalid file type." << endl;
                 request.reply(status_codes::BadRequest, L"Invalid file sent");
                 return false;

@@ -140,9 +140,11 @@ void runInterestSubroutine(DBHandler* dat) {
                         auto f = file_stream<char>::open_istream(wideAddress, std::ios::binary).get();
                         auto response = transactionClient.request(methods::PUT, toSend, f.streambuf());
                         wcout << response.get().status_code() << endl;
-                        dat->addInterestTransaction(acc, *context, *params, nowTime);
-                        std::remove(outputAddress.c_str());
-                        cout << "Successful transaction!" << endl;
+                        if (response.get().status_code() == status_codes::OK) {
+                            dat->addInterestTransaction(acc, *context, *params, nowTime);
+                            std::remove(outputAddress.c_str());
+                            cout << "Successful transaction!" << endl;
+                        }
                     }
                 }
             }

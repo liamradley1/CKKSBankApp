@@ -135,9 +135,11 @@ void processDebits(DBHandler* dat, TransactionHandler* tran) {
                         f = file_stream<char>().open_istream(wAddress, std::ios::binary).get();
                         response = client.request(methods::PUT, toSendFile, f.streambuf());
                         wcout << response.get().status_code() << endl;
-                        dat->logTransaction(from, to, nowTime);
-                        cout << "Successful direct debit from " << from->getId() << " to " << to->getId() << " for amount " << (char)156 << -amount << "." << endl << endl;
-                        _sleep(1000);
+                        if (response.get().status_code() == status_codes::OK) {
+                            dat->logTransaction(from, to, nowTime);
+                            cout << "Successful direct debit from " << from->getId() << " to " << to->getId() << " for amount " << (char)156 << -amount << "." << endl << endl;
+                            _sleep(1000);
+                        }
                     }
                     else {
                         std::wcout << "Deleting direct debit " << d->getId() << " as user " << from->getId() << " does not have the sufficient balance" << endl << endl;
