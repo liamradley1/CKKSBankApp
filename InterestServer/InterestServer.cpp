@@ -38,6 +38,7 @@ DBHandler* dat = new DBHandler(tran);
 seal::EncryptionParameters* params = new seal::EncryptionParameters(seal::scheme_type::ckks);
 seal::SEALContext* context = new seal::SEALContext(NULL);
 
+//Read in cloud DNS from file
 wstring readCloudDNS() {
     ifstream inFile("cloudDNS.txt");
     string location;
@@ -47,6 +48,7 @@ wstring readCloudDNS() {
 
 wstring cloudDNS = readCloudDNS();
 
+// Sends HTTP request for file. Receives file contents and reads this into ciphertext
 void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
     http_client client(cloudDNS + L":8081/balance");
@@ -67,12 +69,14 @@ void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     std::remove(std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(balAddress).c_str());
 }
 
+// Load CKKS parameters from file
 void loadCKKSParams(seal::EncryptionParameters& params) {
     std::ifstream paramsFileIn("paramsCKKS.txt", std::ios::binary);
     params.load(paramsFileIn);
     paramsFileIn.close();
 }
 
+// Main workhorse program for InterestServer program. Runs monthly. Checks each account balance. If greater than zero applies interest
 void runInterestSubroutine(DBHandler* dat) {
     std::string regString = "0 0 0 1 * *"; // set to run monthly
     regString = "0 * * * * *"; // set to run every minute for debug 
@@ -157,7 +161,6 @@ void runInterestSubroutine(DBHandler* dat) {
 
 int main()
 {
-    cout << "Let's go" << endl;
     try
     {
         loadCKKSParams(*params);

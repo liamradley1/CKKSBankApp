@@ -4,6 +4,7 @@
 #include <fstream>
 using namespace mysqlx;
 
+// Class constructor
 DBHandler::DBHandler(TransactionHandler* tran)
 {
 	this->tran = tran;
@@ -14,6 +15,7 @@ DBHandler::DBHandler(TransactionHandler* tran)
 	this->debits = nullptr;
 }
 
+// Logs transaction in database
 bool DBHandler::logTransaction(Account* from, Account* to, time_t nowTime)
 {
 	session->startTransaction();
@@ -32,6 +34,7 @@ bool DBHandler::logTransaction(Account* from, Account* to, time_t nowTime)
 	}
 }
 
+// Establishes connection with database
 bool DBHandler::connectToDB()
 {
 	try {
@@ -56,6 +59,7 @@ bool DBHandler::connectToDB()
 	}
 }
 
+// Ends connection with database
 bool DBHandler::endConnection() {
 	try {
 		if (session != nullptr && schema != nullptr) {
@@ -87,6 +91,7 @@ Table* DBHandler::getAccounts() {
 	return accounts;
 }
 
+// Gets list of accounts
 std::vector<Account*> DBHandler::getAccounts(seal::SEALContext context) {
 	RowResult accountNums = accounts->select("id").orderBy("id").execute();
 	std::vector<Account*> accounts;
@@ -107,6 +112,7 @@ Table* DBHandler::getTransactions() {
 	return transactions;
 }
 
+// Gets list of transactions on an account
 TransactionList* DBHandler::getTransactions(int accountId, seal::SEALContext context) {
 	RowResult tra = transactions->select("*").where("transactionOwnerID=" + std::to_string(accountId)).orderBy("transactionTime").execute();
 	if (tra.count() == 0) {
@@ -126,6 +132,8 @@ TransactionList* DBHandler::getTransactions(int accountId, seal::SEALContext con
 	return nullptr;
 }
 
+
+// Gets account by ID
 Account* DBHandler::getAccount(int id, seal::SEALContext context) {
 	RowResult acc = accounts->select("*").where("id=" + std::to_string(id)).execute();
 	if (acc.count() == 1) {
@@ -138,6 +146,7 @@ Account* DBHandler::getAccount(int id, seal::SEALContext context) {
 	else return nullptr;
 }
 
+// Legacy code for working with direct debits
 bool DBHandler::directDebit(DirectDebit* dD, seal::PublicKey public_key, seal::SEALContext context, seal::EncryptionParameters params)
 {
 	/*try {
@@ -155,6 +164,7 @@ bool DBHandler::directDebit(DirectDebit* dD, seal::PublicKey public_key, seal::S
 	return true;
 }
 
+// Adds direct debit to the database
 bool DBHandler::addDebit(DirectDebit* d, std::string regString, seal::SEALContext context, seal::EncryptionParameters params)
 {
 	try {
@@ -170,6 +180,7 @@ bool DBHandler::addDebit(DirectDebit* d, std::string regString, seal::SEALContex
 	}
 }
 
+// Gets list of direct debits from database
 DebitList* DBHandler::queryDebits(seal::SEALContext context) {
 	try {
 		RowResult deb = debits->select("*").execute();
@@ -201,6 +212,7 @@ DebitList* DBHandler::queryDebits(seal::SEALContext context) {
 	return nullptr;
 }
 
+// Updates time set in the database for direct debit
 void DBHandler::updateDebits(DirectDebit* d) {
 	try {
 		session->startTransaction();
@@ -213,6 +225,8 @@ void DBHandler::updateDebits(DirectDebit* d) {
 	}
 }
 
+
+// Requeries direct debits
 void DBHandler::refreshDebits(seal::SEALContext context) {
 	DebitList* debs = queryDebits(context);
 	if (debs != nullptr) {
@@ -223,6 +237,7 @@ void DBHandler::refreshDebits(seal::SEALContext context) {
 	}
 }
 
+// Deletes direct debit by reference
 void DBHandler::removeDebit(DirectDebit* d)
 {
 	try {
@@ -236,6 +251,7 @@ void DBHandler::removeDebit(DirectDebit* d)
 	}
 }
 
+// Deletes direct debit by ID
 void DBHandler::removeDebit(int id) {
 	try {
 		session->startTransaction();
@@ -248,6 +264,7 @@ void DBHandler::removeDebit(int id) {
 	}
 }
 
+// Adds interest accrual transaction to database
 void DBHandler::addInterestTransaction(Account* account, seal::SEALContext context, seal::EncryptionParameters params, seal::PublicKey publicKey, time_t nowTime) {
 	try {
 		session->startTransaction();

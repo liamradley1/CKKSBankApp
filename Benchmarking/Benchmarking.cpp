@@ -1,6 +1,3 @@
-// Benchmarking.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -19,7 +16,7 @@
 
 using namespace std;
 
-
+// Generates sessional AES keys and IVs
 void GenerateAESKey(unsigned char* outAESKey, unsigned char* outAESIv) {
     unsigned char* key = new unsigned char[256];
     unsigned char* iv = new unsigned char[256 / 2];
@@ -30,10 +27,13 @@ void GenerateAESKey(unsigned char* outAESKey, unsigned char* outAESIv) {
         cout << "Error creating IV." << endl;
     }
 }
+// Error handling function for AES
 void handleErrors(void)
 {
     ERR_print_errors_fp(stderr);
 }
+
+// Encrypts an unsigned char* into another unsigned char* using OpenSSL
 int encrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key, unsigned char* iv, unsigned char* ciphertext)
 {
     EVP_CIPHER_CTX* ctx;
@@ -77,6 +77,8 @@ int encrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key, uns
 
     return ciphertext_len;
 }
+
+// Decrypts an unsigned char* into another unsigned char* using OpenSSL
 int decrypt(unsigned char* ciphertext, int ciphertext_len, unsigned char* key, unsigned char* iv, unsigned char* plaintext)
 {
     EVP_CIPHER_CTX* ctx;
@@ -120,6 +122,8 @@ int decrypt(unsigned char* ciphertext, int ciphertext_len, unsigned char* key, u
 
     return plaintext_len;
 }
+
+// Encrypts a string into a wstring for sending. Uses the above encrypt function
 wstring aesEncrypt(string input, unsigned char* key, unsigned char* iv) {
     unsigned char* plaintext = new unsigned char[input.length() * 16];
     unsigned char* ciphertext = new unsigned char[input.length() * 16];
@@ -133,6 +137,8 @@ wstring aesEncrypt(string input, unsigned char* key, unsigned char* iv) {
     }
     return toSend;
 }
+
+// Decrypts a wstring into a string. uses the above decrypt function
 string aesDecrypt(wstring input, unsigned char* key, unsigned char* iv) {
     int index = input.find_first_of(L",");
     int ciphertext_len = stoi(input.substr(0, index));
@@ -152,6 +158,8 @@ string aesDecrypt(wstring input, unsigned char* key, unsigned char* iv) {
     }
     return final;
 }
+
+// Generate an RSA keypair and stores them in predetermined files
 void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key, int KEY_LENGTH)
 {
     size_t pri_len = 0; // Private key length
@@ -216,6 +224,8 @@ void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key, int KEY_
     free(pri_key);
     free(pub_key);
 }
+
+// Encrypts a string with the private RSA key
 string RsaPriEncrypt(const std::string& clear_text, std::string& pri_key)
 {
     std::string encrypt_text;
@@ -248,6 +258,8 @@ string RsaPriEncrypt(const std::string& clear_text, std::string& pri_key)
 
     return encrypt_text;
 }
+
+// Decrypts a string with the public RSA key
 string RsaPubDecrypt(const std::string& cipher_text, const std::string& pub_key)
 {
     std::string decrypt_text;
@@ -284,6 +296,8 @@ string RsaPubDecrypt(const std::string& cipher_text, const std::string& pub_key)
 
     return decrypt_text;
 }
+
+// Encrypts a string with the public RSA key
 string RsaPubEncrypt(const std::string& clear_text, const std::string& pub_key)
 {
     try {
@@ -330,6 +344,8 @@ string RsaPubEncrypt(const std::string& clear_text, const std::string& pub_key)
         return "";
     }
 }
+
+// Decrypts a string with the private RSA key
 string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
 {
     std::string decrypt_text;
@@ -371,12 +387,15 @@ string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
     return decrypt_text;
 }
 
+// Loads the CKKS encryption parameters from the paramsCKKS.txt file
 void loadCKKSParams(seal::EncryptionParameters& params) {
     std::ifstream paramsFileIn("paramsCKKS.txt", std::ios::binary);
     params.load(paramsFileIn);
     paramsFileIn.close();
 }
 
+
+// Performs the addition benchmarking test for RSA
 int rsaAddBenchmarking(int iterations, int keySize) {
     int rsaAvg = 0;
     string pubKey;
@@ -410,6 +429,7 @@ int rsaAddBenchmarking(int iterations, int keySize) {
     return rsaAvg;
 }
 
+// Performs the addition benchmarking test for AES
 int aesAddBenchmarking(int iterations) {
     int keySize = 256;
     int aesAvg = 0;
@@ -444,6 +464,7 @@ int aesAddBenchmarking(int iterations) {
     return aesAvg;
 }
 
+// Performs the addition benchmarking test for CKKS without relinearisation
 int ckksAesAddBenchmarking(int iterations) {
     int ckksAvg = 0;
     seal::EncryptionParameters params;
@@ -488,6 +509,8 @@ int ckksAesAddBenchmarking(int iterations) {
     return ckksAvg;
 }
 
+
+// Performs the addition bencharking test for CKKS with relinearisation
 int ckksAesAddBenchmarkingRelin(int iterations) {
     int ckksAvg = 0;
     seal::EncryptionParameters params;
@@ -535,6 +558,7 @@ int ckksAesAddBenchmarkingRelin(int iterations) {
     return ckksAvg;
 }
 
+// Performs the subtraction benchmarking test for RSA
 int rsaSubBenchmarking(int iterations, int keySize) {
     int rsaAvg = 0;
     string pubKey;
@@ -568,6 +592,7 @@ int rsaSubBenchmarking(int iterations, int keySize) {
     return rsaAvg;
 }
 
+// Performs the subtraction benchmarking test for AES
 int aesSubBenchmarking(int iterations) {
     int keySize = 256;
     int aesAvg = 0;
@@ -602,6 +627,7 @@ int aesSubBenchmarking(int iterations) {
     return aesAvg;
 }
 
+// Performs the subtraction benchmarking test for CKKS without relinearisation
 int ckksAesSubBenchmarking(int iterations) {
     int ckksAvg = 0;
     seal::EncryptionParameters params;
@@ -646,6 +672,7 @@ int ckksAesSubBenchmarking(int iterations) {
     return ckksAvg;
 }
 
+// Performs the subtraction benchmarking test for CKKS with relinearisation
 int ckksAesSubBenchmarkingRelin(int iterations) {
     int ckksAvg = 0;
     seal::EncryptionParameters params;
@@ -693,6 +720,7 @@ int ckksAesSubBenchmarkingRelin(int iterations) {
     return ckksAvg;
 }
 
+// Performs the multiplication benchmarking test for RSA
 int rsaMultBenchmarking(int iterations, int keySize) {
     int rsaAvg = 0;
     string pubKey;
@@ -726,6 +754,7 @@ int rsaMultBenchmarking(int iterations, int keySize) {
     return rsaAvg;
 }
 
+// Performs the multiplication benchmarking test for AES
 int aesMultBenchmarking(int iterations) {
     int keySize = 256;
     int aesAvg = 0;
@@ -760,6 +789,7 @@ int aesMultBenchmarking(int iterations) {
     return aesAvg;
 }
 
+// Performs the multiplication benchmarking test for CKKS without relinearisation
 int ckksAesMultBenchmarkingNoRelin(int iterations) {
     int ckksAvg = 0;
     seal::EncryptionParameters params;
@@ -808,6 +838,7 @@ int ckksAesMultBenchmarkingNoRelin(int iterations) {
     return ckksAvg;
 }
 
+// Performs the multiplication benchmarking test for CKKS with relinearisation
 int ckksAesMultBenchmarkingRelin(int iterations) {
     int ckksAvg = 0;
     seal::EncryptionParameters params;
@@ -849,6 +880,7 @@ int ckksAesMultBenchmarkingRelin(int iterations) {
     return ckksAvg;
 }
 
+// Performs the balance retrieval benchmarking test for AES
 int aesDecryptBenchmark(int iterations) {
     int keySize = 256;
     int aesAvg = 0;
@@ -873,6 +905,8 @@ int aesDecryptBenchmark(int iterations) {
     cout << "Average time for AES-256:" << aesAvg << " microseconds" << endl;
     return aesAvg;
 }
+
+// Performs the balance retrieval benchmarking test for RSA
 int rsaDecryptBenchmark(int iterations, int keySize) {
     int aesAvg = 0;
     string pubKey, priKey;
@@ -895,6 +929,7 @@ int rsaDecryptBenchmark(int iterations, int keySize) {
     cout << "Average time for RSA on " << keySize << " bits:" << aesAvg << " microseconds" << endl;
 }
 
+// Performs the balance retrieval benchmarking test for CKKS without relinearisation
 int ckksDecryptBenchmark(int iterations) {
     int ckksAvg = 0;
     seal::EncryptionParameters params;
@@ -940,6 +975,56 @@ int ckksDecryptBenchmark(int iterations) {
     return ckksAvg;
 }
 
+// Performs the balance retrieval benchmarking test for CKKS with relinearisation
+int ckksDecryptBenchmarkRelin(int iterations) {
+    int ckksAvg = 0;
+    seal::EncryptionParameters params;
+    loadCKKSParams(params);
+    seal::SEALContext context(params);
+    seal::KeyGenerator keyGen(context);
+    seal::SecretKey key;
+    seal::RelinKeys relinKeys;
+    key = keyGen.secret_key();
+    keyGen.create_relin_keys(relinKeys);
+    seal::Encryptor encryptor(context, key);
+    seal::Decryptor decryptor(context, key);
+    seal::CKKSEncoder encoder(context);
+    seal::Evaluator eval(context);
+    seal::RelinKeys relinKeys;
+    keyGen.create_relin_keys(relinKeys);
+    double scale = pow(2, 20);
+    double lowerBound = 0.00;
+    double upperBound = 1.00;
+    unsigned char* aesKey = new unsigned char[256];
+    unsigned char* iv = new unsigned char[128];
+    std::uniform_real_distribution<double> unif(lowerBound, upperBound);
+    GenerateAESKey(aesKey, iv);
+    default_random_engine re;
+    for (int i = 0; i < iterations; ++i) {
+        double amount = unif(re);
+        seal::Plaintext plain;
+        seal::Ciphertext cipher1;
+        encoder.encode(amount, scale, plain);
+        encryptor.encrypt_symmetric(plain, cipher1);
+        auto start = chrono::high_resolution_clock::now();
+        vector<double> res;
+        eval.relinearize_inplace(cipher1, relinKeys);
+        decryptor.decrypt(cipher1, plain);
+        encoder.decode(plain, res);
+        double result = res[0];
+        wstring toSend = aesEncrypt(to_string(result), aesKey, iv);
+        string received = aesDecrypt(toSend, aesKey, iv);
+        result = stod(received);
+        auto end = chrono::high_resolution_clock::now();
+        auto ms = chrono::duration_cast<chrono::microseconds>(end - start).count();
+        ckksAvg += ms;
+    }
+    ckksAvg /= iterations;
+    cout << "Average time for CKKS/AES-256 hybrid with relinearisation: " << ckksAvg << " microseconds" << endl;
+    return ckksAvg;
+}
+
+// A test to see the average time taken to complete the set number of iterations without relinearisation
 int relinTest(int iterations) {
     seal::Ciphertext cipher1, cipher2;
     seal::Plaintext plain1, plain2;
@@ -979,6 +1064,7 @@ int relinTest(int iterations) {
     return (avgTime / iterations);
 }
 
+// A test to see the average time taken to complete the set number of iterations with relinearisation
 int relinTest2(int iterations) {
     seal::Ciphertext cipher1, cipher2;
     seal::Plaintext plain1, plain2;
@@ -1020,6 +1106,7 @@ int relinTest2(int iterations) {
     return (avgTime / iterations);
 }
 
+// A test to see the average number time to failure with consecutive addition operations without relinearisation
 int relinTest3(int iterations) {
     seal::Ciphertext cipher1, cipher2;
     seal::Plaintext plain1, plain2;
@@ -1076,7 +1163,7 @@ int relinTest3(int iterations) {
     return runs / iterations;
 }
 
-
+// A test to see the average number time to failure with consecutive addition operations with relinearisation
 int relinTest4(int iterations) {
     seal::Ciphertext cipher1, cipher2;
     seal::Plaintext plain1, plain2;
@@ -1136,6 +1223,7 @@ int relinTest4(int iterations) {
     return runs / iterations;
 }
 
+// A test to see the frequency distribution of times to failure with consecutive addition operations with relinearisation
 vector<int> relinTest5(int iterations) {
     seal::Ciphertext cipher1, cipher2;
     seal::Plaintext plain1, plain2;
@@ -1194,6 +1282,7 @@ vector<int> relinTest5(int iterations) {
     return runs;
 }
 
+// A test to see the frequency distribution of time to failure with consecutive addition operations without relinearisation
 vector<int> relinTest6(int iterations) {
     seal::Ciphertext cipher1, cipher2;
     seal::Plaintext plain1, plain2;
@@ -1249,6 +1338,7 @@ vector<int> relinTest6(int iterations) {
     return runs;
 }
 
+// A test to see the frequency distribution of time to failure with consecutive multiplication operations without relinearisation
 vector<int> relinTest7(int iterations) {
     seal::Ciphertext cipher1, cipher2;
     seal::Plaintext plain1, plain2;
@@ -1312,6 +1402,7 @@ vector<int> relinTest7(int iterations) {
     return runs;
 }
 
+// A test to see the frequency distribution of time to failure with consecutive mulitplication operations with relinearisation
 vector<int> relinTest8(int iterations) {
     seal::Ciphertext cipher1, cipher2, cipher3;
     seal::Plaintext plain1, plain2;
@@ -1383,7 +1474,7 @@ vector<int> relinTest8(int iterations) {
     return runs;
 }
 
-
+// A test to see the average number time to failure with consecutive multiplication operations without relinearisation
 int relinTest9(int iterations) {
     try {
         seal::Ciphertext cipher1, cipher2;
@@ -1426,6 +1517,7 @@ int relinTest9(int iterations) {
     }
 }
 
+// A test to see the average number time to failure with consecutive addition operations with relinearisation
 int relinTest10(int iterations) {
     seal::Ciphertext cipher1, cipher2;
     seal::Plaintext plain1, plain2;
@@ -1468,9 +1560,6 @@ int relinTest10(int iterations) {
 
 
 
-
-
-
 int main()
 {
     try {
@@ -1478,23 +1567,23 @@ int main()
 
         cout << "Without relinearisation" << endl;
         for (int i : iterations) {
-        //    relinTest(i);
+            relinTest(i);
             relinTest9(i);
         }
 
         cout << "With relinearisation: " << endl;
         for (int i : iterations) {
-        //    relinTest2(i);
+            relinTest2(i);
             relinTest10(i);
         }
         
-        //thread relin1(relinTest3, 1000);
-        //thread relin2(relinTest4, 1000);
+        thread relin1(relinTest3, 1000);
+        thread relin2(relinTest4, 1000);
 
-        //relin1.join();
-        //relin2.join();
+        relin1.join();
+        relin2.join();
 
-        /*vector<int> runs = relinTest6(1000);
+        vector<int> runs = relinTest6(1000);
         ofstream out5("relinTest6.txt");
 
         for (int i = 0; i < runs.size(); ++i) {
@@ -1508,28 +1597,28 @@ int main()
             out6 << runs[i] << endl;
         }
         cout << 5 << endl;
-        out6.close();*/
+        out6.close();
 
-        //ofstream out7("relinTest7.txt");
-        //vector<int> runs = relinTest7(1000);
-        //for (int i = 0; i < runs.size(); ++i) {
-        //    out7 << runs[i] << endl;
-        //}
-        //cout << 7 << endl;
-        //out7.close();
+        ofstream out7("relinTest7.txt");
+        vector<int> runs = relinTest7(1000);
+        for (int i = 0; i < runs.size(); ++i) {
+            out7 << runs[i] << endl;
+        }
+        cout << 7 << endl;
+        out7.close();
 
-        //ofstream out8("relinTest8.txt");
-        //runs = relinTest8(1000);
-        //for (int i = 0; i < runs.size(); ++i) {
-        //    out8 << runs[i] << endl;
-        //}
-        //cout << 8 << endl;
-        //out8.close();
-
-
+        ofstream out8("relinTest8.txt");
+        runs = relinTest8(1000);
+        for (int i = 0; i < runs.size(); ++i) {
+            out8 << runs[i] << endl;
+        }
+        cout << 8 << endl;
+        out8.close();
 
 
-        /*
+
+
+        
         cout << "Addition:" << endl;
         thread aesAddThread(aesAddBenchmarking, iterations);
         thread rsaAddThread1(rsaAddBenchmarking, iterations, 2048);
@@ -1578,7 +1667,7 @@ int main()
         rsaDecryptThread1.join();
         ckksDecryptThread.join();
         rsaDecryptThread2.join();
-        */
+        
     }
     catch (exception& e) {
         cout << e.what() << endl;

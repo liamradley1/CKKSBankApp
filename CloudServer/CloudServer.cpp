@@ -26,7 +26,7 @@ seal::EncryptionParameters* params = new seal::EncryptionParameters();
 seal::SEALContext* context = new seal::SEALContext(NULL);
 wstring serverIP;
 
-
+// Reads in cloud DNS from file
 wstring readCloudDNS() {
     try {
         ifstream inFile("cloudDNS.txt");
@@ -41,6 +41,7 @@ wstring readCloudDNS() {
     }
 }
 
+// Reads in central server IP from file
 wstring readServerIP() {
     try {
         ifstream inFile("serverIP.txt");
@@ -55,6 +56,7 @@ wstring readServerIP() {
     }
 }
 
+// Reads in CKKS parameters from file
 void loadCKKSParams(seal::EncryptionParameters& params) {
     try {
         std::ifstream paramsFileIn("paramsCKKS.txt", std::ios::binary);
@@ -68,7 +70,7 @@ void loadCKKSParams(seal::EncryptionParameters& params) {
     }
 }
 
-
+// Receives HTTP request from central server for a file. Sends encrypted file contents.
 bool sendBalance(http_request request) {
     try {
         wcout <<"Read server IP: " << serverIP << endl;
@@ -101,6 +103,7 @@ bool sendBalance(http_request request) {
     }
 }
 
+// Receives HTTP request from central server to perform transaction on a file with another file. Applies the transaction and informs central server of success
 bool transaction(http_request request) {
     try {
         if (request.get_remote_address().compare(serverIP) == 0) {
@@ -184,6 +187,7 @@ bool transaction(http_request request) {
     }
 }
 
+// Receives file from central server. Places file in storage given it is a .txt file and does not already exist
 bool directDebit(http_request request) {
     try {
         if (request.get_remote_address().compare(serverIP) == 0) {

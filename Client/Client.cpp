@@ -37,7 +37,7 @@ unsigned char* aesKey = new unsigned char[AES_BITS];
 /* A 128 bit IV */
 unsigned char* iv = new unsigned char[AES_BITS / 2];
 
-
+// Generates sessional RSA key
 void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key)
 {
     size_t pri_len = 0; // Private key length
@@ -45,23 +45,16 @@ void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key)
     char* pri_key = nullptr; // private key
     char* pub_key = nullptr; // public key
 
-    // Generate key pair
     RSA* keypair = RSA_generate_key(KEY_LENGTH, RSA_3, NULL, NULL);
 
     BIO* pri = BIO_new(BIO_s_mem());
     BIO* pub = BIO_new(BIO_s_mem());
 
-    // Generate private key
     PEM_write_bio_RSAPrivateKey(pri, keypair, NULL, NULL, 0, NULL, NULL);
-    // Note------Generate the public key in the first format
-//PEM_write_bio_RSAPublicKey(pub, keypair);
-     // Note------Generate the public key in the second format (this is used in the code here)
     PEM_write_bio_RSA_PUBKEY(pub, keypair);
-    // Get the length  
     pri_len = BIO_pending(pri);
     pub_len = BIO_pending(pub);
 
-    // The key pair reads the string  
     pri_key = (char*)malloc(pri_len + 1);
     pub_key = (char*)malloc(pub_len + 1);
 
@@ -74,7 +67,6 @@ void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key)
     out_pub_key = pub_key;
     out_pri_key = pri_key;
 
-    // Write the public key to the file
     std::ofstream pub_file(PUB_KEY_FILE, std::ios::out);
     if (!pub_file.is_open())
     {
@@ -84,7 +76,6 @@ void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key)
     pub_file << pub_key;
     pub_file.close();
 
-    // write private key to file
     std::ofstream pri_file(PRI_KEY_FILE, std::ios::out);
     if (!pri_file.is_open())
     {
@@ -94,7 +85,6 @@ void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key)
     pri_file << pri_key;
     pri_file.close();
 
-    // release memory
     RSA_free(keypair);
     BIO_free_all(pub);
     BIO_free_all(pri);
@@ -103,6 +93,8 @@ void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key)
     free(pub_key);
 }
 
+
+// Encrypts data with the RSA private key
 std::string RsaPriEncrypt(const std::string& clear_text, std::string& pri_key)
 {
     std::string encrypt_text;
@@ -115,20 +107,16 @@ std::string RsaPriEncrypt(const std::string& clear_text, std::string& pri_key)
         throw new exception("RSA Private Key Encryption Error.");
     }
 
-    // Get the maximum length of data that RSA can process at a time
     int len = RSA_size(rsa);
 
-    // Apply for memory: store encrypted ciphertext data
     char* text = new char[len + 1];
     memset(text, 0, len + 1);
 
-    // Encrypt the data with a private key (the return value is the length of the encrypted data)
     int ret = RSA_private_encrypt(clear_text.length(), (const unsigned char*)clear_text.c_str(), (unsigned char*)text, rsa, RSA_PKCS1_PADDING);
     if (ret >= 0) {
         encrypt_text = std::string(text, ret);
     }
 
-    // release memory  
     delete[] text;
     BIO_free_all(keybio);
     RSA_free(rsa);
@@ -136,21 +124,19 @@ std::string RsaPriEncrypt(const std::string& clear_text, std::string& pri_key)
     return encrypt_text;
 }
 
+// Decrypts data with the RSA public key
 std::string RsaPubDecrypt(const std::string& cipher_text, const std::string& pub_key)
 {
     std::string decrypt_text;
     BIO* keybio = BIO_new_mem_buf((unsigned char*)pub_key.c_str(), -1);
     RSA* rsa = RSA_new();
 
-    // Note--------Use the public key in the first format for decryption
-   //rsa = PEM_read_bio_RSAPublicKey(keybio, &rsa, NULL, NULL);
-    // Note--------Use the public key in the second format for decryption (we use this format as an example)
     rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
     if (!rsa)
     {
-        unsigned long err = ERR_get_error(); //Get the error number
+        unsigned long err = ERR_get_error(); 
         char err_msg[1024] = { 0 };
-        ERR_error_string(err, err_msg); // Format: error:errId: library: function: reason
+        ERR_error_string(err, err_msg);
         cout << "err msg: err:" << err << ", msg:" << err_msg << endl;
         BIO_free_all(keybio);
         throw new exception("RSA Public Decryption Error");
@@ -159,13 +145,11 @@ std::string RsaPubDecrypt(const std::string& cipher_text, const std::string& pub
     int len = RSA_size(rsa);
     char* text = new char[len + 1];
     memset(text, 0, len + 1);
-    // Decrypt the ciphertext
     int ret = RSA_public_decrypt(cipher_text.length(), (const unsigned char*)cipher_text.c_str(), (unsigned char*)text, rsa, RSA_PKCS1_PADDING);
     if (ret >= 0) {
         decrypt_text.append(std::string(text, ret));
     }
 
-    // release memory  
     delete[] text;
     BIO_free_all(keybio);
     RSA_free(rsa);
@@ -173,28 +157,22 @@ std::string RsaPubDecrypt(const std::string& cipher_text, const std::string& pub
     return decrypt_text;
 }
 
-
+// Encrypts data with the RSA public key
 std::string RsaPubEncrypt(const std::string& clear_text, const std::string& pub_key)
 {
     std::string encrypt_text;
     BIO* keybio = BIO_new_mem_buf((unsigned char*)pub_key.c_str(), -1);
     RSA* rsa = RSA_new();
-    // Note the public key in the first format
-   //rsa = PEM_read_bio_RSAPublicKey(keybio, &rsa, NULL, NULL);
-    // Note the public key in the second format (here we take the second format as an example)
     rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa, NULL, NULL);
 
-    // Get the maximum length of the data block that RSA can process at a time
     int key_len = RSA_size(rsa);
-    int block_len = key_len - 11; // Because the filling method is RSA_PKCS1_PADDING, so you need to subtract 11 from the key_len
+    int block_len = key_len - 11; // Done because we use PKCS1 padding
 
-    // Apply for memory: store encrypted ciphertext data
     char* sub_text = new char[key_len + 1];
     memset(sub_text, 0, key_len + 1);
     int ret = 0;
     int pos = 0;
     std::string sub_str;
-    // Encrypt the data in segments (the return value is the length of the encrypted data)
     while (pos < clear_text.length()) {
         sub_str = clear_text.substr(pos, block_len);
         memset(sub_text, 0, key_len + 1);
@@ -205,7 +183,6 @@ std::string RsaPubEncrypt(const std::string& clear_text, const std::string& pub_
         pos += block_len;
     }
 
-    // release memory  
     BIO_free_all(keybio);
     RSA_free(rsa);
     delete[] sub_text;
@@ -213,7 +190,7 @@ std::string RsaPubEncrypt(const std::string& clear_text, const std::string& pub_
     return encrypt_text;
 }
 
-
+// Decrypts the data with the RSA private key
 std::string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri_key)
 {
     std::string decrypt_text;
@@ -223,19 +200,17 @@ std::string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri
 
     rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa, NULL, NULL);
     if (rsa == nullptr) {
-        unsigned long err = ERR_get_error(); //Get the error number
+        unsigned long err = ERR_get_error();
         char err_msg[1024] = { 0 };
         throw new exception("RSA Private Key Decryption Error");
     }
 
-    // Get the maximum length of RSA single processing
     int key_len = RSA_size(rsa);
     char* sub_text = new char[key_len + 1];
     memset(sub_text, 0, key_len + 1);
     int ret = 0;
     std::string sub_str;
     int pos = 0;
-    // Decrypt the ciphertext in segments
     while (pos < cipher_text.length()) {
         sub_str = cipher_text.substr(pos, key_len);
         memset(sub_text, 0, key_len + 1);
@@ -245,7 +220,6 @@ std::string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri
             pos += key_len;
         }
     }
-    // release memory  
     delete[] sub_text;
     BIO_free_all(keybio);
     RSA_free(rsa);
@@ -253,11 +227,13 @@ std::string RsaPriDecrypt(const std::string& cipher_text, const std::string& pri
     return decrypt_text;
 }
 
+// Error handling for AES openssl methods
 void handleErrors(void)
 {
     ERR_print_errors_fp(stderr);
 }
 
+// Low-level encryption via AES
 int encrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key,
     unsigned char* iv, unsigned char* ciphertext)
 {
@@ -267,42 +243,27 @@ int encrypt(unsigned char* plaintext, int plaintext_len, unsigned char* key,
 
     int ciphertext_len;
 
-    /* Create and initialise the context */
     if (!(ctx = EVP_CIPHER_CTX_new()))
         handleErrors();
 
-    /*
-     * Initialise the encryption operation. IMPORTANT - ensure you use a key
-     * and IV size appropriate for your cipher
-     * In this example we are using 256 bit AES (i.e. a 256 bit key). The
-     * IV size for *most* modes is the same as the block size. For AES this
-     * is 128 bits
-     */
+
     if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv))
         handleErrors();
 
-    /*
-     * Provide the message to be encrypted, and obtain the encrypted output.
-     * EVP_EncryptUpdate can be called multiple times if necessary
-     */
     if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
         handleErrors();
     ciphertext_len = len;
 
-    /*
-     * Finalise the encryption. Further ciphertext bytes may be written at
-     * this stage.
-     */
     if (1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
         handleErrors();
     ciphertext_len += len;
 
-    /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
 
     return ciphertext_len;
 }
 
+// Low-level decryption via AES
 int decrypt(unsigned char* ciphertext, int ciphertext_len, unsigned char* key,
     unsigned char* iv, unsigned char* plaintext)
 {
@@ -312,42 +273,26 @@ int decrypt(unsigned char* ciphertext, int ciphertext_len, unsigned char* key,
 
     int plaintext_len;
 
-    /* Create and initialise the context */
     if (!(ctx = EVP_CIPHER_CTX_new()))
         handleErrors();
 
-    /*
-     * Initialise the decryption operation. IMPORTANT - ensure you use a key
-     * and IV size appropriate for your cipher
-     * In this example we are using 256 bit AES (i.e. a 256 bit key). The
-     * IV size for *most* modes is the same as the block size. For AES this
-     * is 128 bits
-     */
     if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv))
         handleErrors();
 
-    /*
-     * Provide the message to be decrypted, and obtain the plaintext output.
-     * EVP_DecryptUpdate can be called multiple times if necessary.
-     */
     if (1 != EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
         handleErrors();
     plaintext_len = len;
 
-    /*
-     * Finalise the decryption. Further plaintext bytes may be written at
-     * this stage.
-     */
     if (1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len))
         handleErrors();
     plaintext_len += len;
 
-    /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
 
     return plaintext_len;
 }
 
+// High-level encryption via AES for use with cppRESTSDK
 wstring aesEncrypt(string input) {
     unsigned char* plaintext = new unsigned char[input.length() * 16];
     unsigned char* ciphertext = new unsigned char[input.length() * 16];
@@ -362,6 +307,7 @@ wstring aesEncrypt(string input) {
     return toSend;
 }
 
+// High-level encryption via AES for use with cppRESTSDK
 string aesDecrypt(wstring input) {
     int index = input.find_first_of(L",");
     int ciphertext_len = stoi(input.substr(0, index));
@@ -383,6 +329,7 @@ string aesDecrypt(wstring input) {
     return final;
 }
 
+// Gets the DNS of the server from its file
 wstring readServerDNS() {
     try {
         ifstream inFile("serverDNS.txt");
@@ -395,8 +342,10 @@ wstring readServerDNS() {
     }
 }
 
+// Read in the serverDNS as a global variable
 wstring serverDNS = readServerDNS();
 
+// Key negotiation method for use with central server
 web::http::status_code getKeys(string pubKey, string priKey, unsigned char* aesKey, unsigned char* iv) {
     try {
         http_client client(serverDNS + L":8080/requestkey");
@@ -435,6 +384,7 @@ web::http::status_code getKeys(string pubKey, string priKey, unsigned char* aesK
     }
 }
 
+// Sends encrypted login details to the central server
 web::http::status_code sendLogin(wstring id, wstring pin) {
     http_client client(serverDNS + L":8080/login");
     cout << "Sending..." << endl;
@@ -451,6 +401,7 @@ web::http::status_code sendLogin(wstring id, wstring pin) {
     return response.status_code();
 }
 
+// Sends encrypted transaction request to the central server. Receives information about success of transaction
 status_code sendTransfer() {
     string accountId;
     string amount;
@@ -478,6 +429,7 @@ status_code sendTransfer() {
     return response.status_code();
 }
 
+// Sends encrypted balance request to the central server. Receives encrypted balance
 status_code checkBalance() {
     try {
         http_client client(serverDNS + L":8080/transfer");
@@ -503,6 +455,7 @@ status_code checkBalance() {
     }
 }
 
+// Sends encrypted transaction history request to the central server. Receives encrypted transaction history
 status_code checkHistory() {
     try {
         http_client client(serverDNS + L":8080/history");
@@ -527,6 +480,7 @@ status_code checkHistory() {
     return status_codes::InternalError;
 }
 
+// Sends encrypted direct debit addition request to the central server. Receives information about success of transaction
 status_code addDebit() {
     http_client client(serverDNS + L":8080/debits");
     try {
@@ -601,6 +555,7 @@ status_code addDebit() {
     return status_codes::OK;
 }
 
+// Sends encrypted direct debit viewing request to the central server. Receives encrypted debit information
 void viewDebits() {
     try {
         http_client client(serverDNS + L":8080/debits");
@@ -622,6 +577,7 @@ void viewDebits() {
     }
 }
 
+// Sends encrypted direct debit delete request to the central server. Receives information about success of transaction
 void removeDebit() {
     cout << "Which debit ID would you like to remove?" << endl;
     string input = "";
@@ -633,6 +589,7 @@ void removeDebit() {
         wcout << response.extract_utf16string().get() << endl;
 }
 
+// Debit menu for UI
 status_code debitMenu() {
     while (true) {
         cout << "Select the option you would like to perform." << endl;
@@ -657,6 +614,7 @@ status_code debitMenu() {
     }
 }
 
+// Sends heartbeat to central server to inform that it is still logged in. Exits application if unsuccessful
 void heartbeat() {
     try {
         while (loggedID.compare(L"") != 0) {
@@ -677,6 +635,7 @@ void heartbeat() {
     }
 }
 
+// Sends encrypted logout request to central server.
 status_code sendLogout() {
     http_client client(serverDNS + L":8080/login");
     string toEncrypt = wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID);

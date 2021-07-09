@@ -4,6 +4,7 @@
 #include <string>
 using std::string;
 
+// Rounds double to 2 decimal places
 double Account::round2Dp(double amount) {
 	double f, xi, xf;
 	xf = modf(amount, &xi);
@@ -11,6 +12,7 @@ double Account::round2Dp(double amount) {
 	return xi + f;
 }
 
+// Class constructor
 Account::Account(int id, std::string firstName, std::string lastName, double overdraft, size_t pin, string balanceAddress, string keyAddress, seal::SEALContext context)
 {
 	this->id = id;
@@ -23,9 +25,11 @@ Account::Account(int id, std::string firstName, std::string lastName, double ove
 	this->interestRate = 0.05;
 }
 
+// Class destructor
 Account::~Account() {
 }
 
+// Legacy code for conversion to hexadecimal format
 string Account::convertToHex(int num) {
 	char arr[100];
 	int i = 0;
@@ -57,22 +61,27 @@ string Account::convertToHex(int num) {
 	return result;
 }
 
+// Returns account ID
 int Account::getId() {
 	return id;
 }
 
+// Returns account's hashed pin
 size_t Account::getHashedPin() {
 	return pin;
 }
 
+// Returns account holder's first name
 string Account::getFirstName() {
 	return firstName;
 }
 
+// Returns account holder's last name
 string Account::getLastName() {
 	return lastName;
 }
 
+// Legacy code for getting account balance. DO NOT USE
 double Account::getBalance(seal::SEALContext context, seal::EncryptionParameters params) {
 	try {
 		std::ifstream in(this->balanceAddress, std::ios::binary);
@@ -86,25 +95,30 @@ double Account::getBalance(seal::SEALContext context, seal::EncryptionParameters
 	}
 }
 
+// Returns account balance address
 std::string Account::getBalanceAddress() {
 	return this->balanceAddress;
 }
 
+
+// Returns account's arranged overdraft
 double Account::getOverdraft() {
 	return overdraft;
 }
 
+// Legacy code that prints details about account
 void Account::printDetails(seal::SEALContext context, seal::EncryptionParameters params) {
 	double balance = getBalance(context, params);
 	std::cout << "ID: " << id << ",\n" << "Name: " << firstName << " " << lastName << ",\nBalance: " << (char)156 << round2Dp(balance) <<"," << std::endl;
 	std::cout << "Overdraft: " << (char)156 << round2Dp(this->overdraft) << std::endl;
 }
 
+// Returns the file name containing the account's CKKS key
 std::string Account::getKeyAddress() {
 	return this->keyAddress;
 }
 
-
+// Legacy code for debiting money from account
 void Account::debit(seal::Ciphertext amount, seal::SEALContext context) {
 	std::ifstream inFile(this->balanceAddress, std::ios::binary);
 	seal::Ciphertext balance;
@@ -116,6 +130,7 @@ void Account::debit(seal::Ciphertext amount, seal::SEALContext context) {
 	balance.save(outFile);
 }
 
+// Legacy code for crediting money to account
 void Account::credit(seal::Ciphertext amount, seal::SEALContext context) {
 	std::ifstream inFile(this->balanceAddress, std::ios::binary);
 	seal::Ciphertext balance;

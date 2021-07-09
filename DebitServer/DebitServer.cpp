@@ -37,6 +37,7 @@ static DBHandler* dat = new DBHandler(tran);
 static seal::EncryptionParameters* params = new seal::EncryptionParameters(seal::scheme_type::ckks);
 static seal::SEALContext* context = new seal::SEALContext(NULL);
 
+// Reads in cloud DNS from file
 wstring readCloudDNS() {
     ifstream inFile("cloudDNS.txt");
     string location;
@@ -46,6 +47,7 @@ wstring readCloudDNS() {
 
 wstring cloudDNS = readCloudDNS();
 
+// HTTP request for file. Receives file information and returns ciphertext
 void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     seal::Ciphertext ciphertext2;
     http_client client(cloudDNS + L":8081/balance");
@@ -66,6 +68,7 @@ void getAmount(wstring balAddress, seal::Ciphertext& ciphertext) {
     std::remove(std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(balAddress).c_str());
 }
 
+// Main workhorse program for processingt direct debits. Checks to see if debit is due and carries it out if it is. Deletes debit if not enough money present in account 
 void processDebits(DBHandler* dat, TransactionHandler* tran) {
     try {
         while (true) {
@@ -158,6 +161,7 @@ void processDebits(DBHandler* dat, TransactionHandler* tran) {
     }
 }
 
+// Load in CKKS parameters from file
 void loadCKKSParams(seal::EncryptionParameters& params) {
     std::ifstream paramsFileIn("paramsCKKS.txt", std::ios::binary);
     params.load(paramsFileIn);
@@ -166,7 +170,6 @@ void loadCKKSParams(seal::EncryptionParameters& params) {
 
 int main()
 {
-    cout << "Let's go" << endl;
     try
     {
         loadCKKSParams(*params);
