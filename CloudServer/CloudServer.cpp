@@ -73,15 +73,10 @@ void loadCKKSParams(seal::EncryptionParameters& params) {
 // Receives HTTP request from central server for a file. Sends encrypted file contents.
 bool sendBalance(http_request request) {
     try {
-        wcout <<"Read server IP: " << serverIP << endl;
-        wcout << "Remote address from: " << request.get_remote_address() << endl;
-        cout << serverIP.length() << endl;
-        cout << request.get_remote_address().length() << endl;
         if (request.get_remote_address().compare(serverIP) == 0) {
             wstring fileName = request.relative_uri().to_string();
             fileName = fileName.substr(1, fileName.length());
             if (filesystem::exists(fileName)) {
-                wcout << fileName << endl;
                 auto f = file_stream<char>::open_istream(fileName, std::ios::binary).get();
                 request.reply(status_codes::OK, f.streambuf());
                 return true;
@@ -109,17 +104,14 @@ bool transaction(http_request request) {
         if (request.get_remote_address().compare(serverIP) == 0) {
             // Partition URI into relevant segments
             wstring uri = request.relative_uri().to_string();
-            wcout << uri << endl;
             int index = uri.find_first_of(',');
             wstring fileFrom = uri.substr(1, index - 1);
             wcout << "File from: " << fileFrom << endl;
             uri = uri.substr(index + 1, uri.length());
-            wcout << "Updated URI: " << uri << endl;
             index = uri.find_first_of(',');
             wstring fileTo = uri.substr(0, index);
             wcout << "File to: " << fileTo << endl;
             uri = uri.substr(index + 1, uri.length());
-            wcout << "Updated URI: " << uri << endl;
             wstring amountFile = uri;
             wcout << amountFile.substr(amountFile.length() - 4, amountFile.length()) << endl;
             if (amountFile.substr(amountFile.length() - 4, amountFile.length()).compare(L".txt") != 0) {
@@ -132,7 +124,6 @@ bool transaction(http_request request) {
                 request.reply(status_codes::BadGateway, L"Invalid file sent");
                 return false;
             }
-            wcout << "Amount file: " << amountFile << endl;
             if (filesystem::exists(fileFrom)) {
                 // Extract the amount file from the request and create a file for storage
                 auto buf = request.body().streambuf();
@@ -140,23 +131,18 @@ bool transaction(http_request request) {
                 while (!buf.is_eof() && buf.getc().get() != -2) {
                     contents += buf.sbumpc();
                 }
-                cout << "Writing balance to file" << endl;
                 ofstream balOut(amountFile, std::ios::binary);
                 balOut << contents;
                 balOut.close();
-                cout << "Balance written in" << endl;
 
                 // Extract the ciphertexts from balance and amount files
                 seal::Ciphertext fromBal, toBal, amount;
-                cout << "Getting the balances" << endl;
                 ifstream fromIn(fileFrom, std::ios::binary);
                 fromBal.load(*context, fromIn);
                 fromIn.close();
-                cout << "fromBal read in" << endl;
                 ifstream balIn(amountFile, std::ios::binary);
                 amount.load(*context, balIn);
                 balIn.close();
-                cout << "balIn read in" << endl;
 
                 // Perform encrypted arithmetic on ciphertexts to update balances
                 seal::Evaluator evaluator(*context);
@@ -192,7 +178,6 @@ bool directDebit(http_request request) {
     try {
         if (request.get_remote_address().compare(serverIP) == 0) {
             wstring fileName = request.relative_uri().to_string();
-            wcout << fileName << endl;
             fileName = fileName.substr(1, fileName.length());
             if (fileName.length() <= 4) {
                 request.reply(status_codes::BadRequest, L"Not a valid file");

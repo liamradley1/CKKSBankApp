@@ -93,7 +93,6 @@ void GenerateRSAKey(std::string& out_pub_key, std::string& out_pri_key)
     free(pub_key);
 }
 
-
 // Encrypts data with the RSA private key
 std::string RsaPriEncrypt(const std::string& clear_text, std::string& pri_key)
 {
@@ -312,7 +311,6 @@ string aesDecrypt(wstring input) {
     int index = input.find_first_of(L",");
     int ciphertext_len = stoi(input.substr(0, index));
     wstring body = input.substr(index + 1, input.length());
-    wcout << body << endl;
     unsigned char* ciphertext = new unsigned char[ciphertext_len];
     unsigned char* plaintext = new unsigned char[ciphertext_len];
     for (int i = 0; i < ciphertext_len; ++i) {
@@ -389,7 +387,6 @@ web::http::status_code sendLogin(wstring id, wstring pin) {
     http_client client(serverDNS + L":8080/login");
     cout << "Sending..." << endl;
     auto response = client.request(methods::PUT, id, pin).get();
-    cout << response.status_code() << endl;
     if (response.status_code() == status_codes::OK) {
         loggedID = id;
         cout << "Logged in!" << endl;
@@ -414,16 +411,18 @@ status_code sendTransfer() {
     string toEncrypt = accFrom + "," + accountId;
     wstring ids = aesEncrypt(toEncrypt);
     wstring amountToSend = aesEncrypt(amount);
-    cout << amount << endl;
     http_client client(serverDNS + L":8080/transfer");
     auto response = client.request(methods::POST, ids, amountToSend).get();
     if (response.status_code() == status_codes::OK) {
+        system("CLS");
         cout << "Transfer successful!" << endl;
     }
     else if (response.status_code() == status_codes::InternalError) {
+        system("CLS");
         cout << "An error occurred on the server. Please try again later." << endl;
     }
     else {
+        system("CLS");
         wcout << response.extract_utf16string().get() << endl;
     }
     return response.status_code();
@@ -437,20 +436,23 @@ status_code checkBalance() {
         wstring toSend = aesEncrypt(toEnc);
         auto response = client.request(methods::GET, toSend).get();
         if (response.status_code() == status_codes::OK) {
-            cout << status_codes::OK << endl;
             wstring body = response.extract_utf16string().get();
             double balance = stod(aesDecrypt(body));
+            system("CLS");
             cout << "Balance: " << (char)156 << setprecision(2) << fixed << balance << endl << endl;
         }
         else if (response.status_code() == status_codes::InternalError) {
+            system("CLS");
             cout << "An error has occurred on the server. Please try again later." << endl;
         }
         else {
+            system("CLS");
             wcout << response.extract_utf16string().get() << endl;
         }
         return response.status_code();
     }
     catch (exception& e) {
+        system("CLS");
         cout << e.what() << endl;
     }
 }
@@ -463,17 +465,19 @@ status_code checkHistory() {
         wstring toSend = aesEncrypt(toEncrypt);
         auto response = client.request(methods::GET, toSend).get();
         if (response.status_code() == status_codes::OK) {
-            cout << status_codes::OK << endl;
             wstring body = response.extract_utf16string().get();
             string history = aesDecrypt(body);
+            system("CLS");
             cout << history << endl;
         }
         else {
+            system("CLS");
             wcout << response.extract_utf16string().get() << endl;
         }
         return response.status_code();
     }
     catch (exception& e) {
+        system("CLS");
         cout << e.what() << endl;
         cout << "Please try again." << endl;
     }
@@ -530,6 +534,7 @@ status_code addDebit() {
                 break;
             }
             else {
+                system("CLS");
                 std::cout << "Invalid choice. Please try again." << std::endl;
             }
         }
@@ -546,9 +551,11 @@ status_code addDebit() {
         wstring toSend = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(collection));
         wstring encId = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID));
         auto response = client.request(methods::POST, encId, toSend);
+        system("CLS");
         wcout << response.get().extract_utf16string().get() << endl;
     }
     catch (std::exception& e) {
+        system("CLS");
         std::cout << "Something went wrong!" << std::endl;
         std::cout << e.what() << std::endl;
     }
@@ -565,13 +572,16 @@ void viewDebits() {
         if (response.get().status_code() == status_codes::OK) {
             wstring body = response.get().extract_utf16string().get();
             string details = aesDecrypt(body);
+            system("CLS");
             cout << details << endl;
         }
         else {
+            system("CLS");
             wcout << response.get().extract_utf16string().get() << endl;
         }
     }
     catch (exception& e) {
+        system("CLS");
         cout << e.what() << endl;
         cout << "Request timed out. Please try again." << endl;
     }
@@ -586,7 +596,8 @@ void removeDebit() {
     wstring toSend = aesEncrypt(input);
     wstring idToSend = aesEncrypt(wstring_convert<codecvt_utf8<wchar_t>>().to_bytes(loggedID));
     auto response = client.request(methods::DEL, idToSend, toSend).get();
-        wcout << response.extract_utf16string().get() << endl;
+    system("CLS");
+    wcout << response.extract_utf16string().get() << endl;
 }
 
 // Debit menu for UI
@@ -609,6 +620,7 @@ status_code debitMenu() {
             return status_codes::OK;
         }
         else {
+            system("CLS");
             cout << "Invalid choice. Please try again" << endl;
         }
     }
@@ -622,6 +634,7 @@ void heartbeat() {
             auto response = client.request(methods::GET).get();
             if (response.status_code() != status_codes::OK) {
                 wcout << response.extract_utf16string().get() << endl;
+                system("CLS");
                 cout << "Heartbeat could not be sent" << endl;
                 exit(1);
             }
@@ -629,6 +642,7 @@ void heartbeat() {
         }
     }
     catch (exception& e) {
+        system("CLS");
         cout << "Heartbeat could not be sent" << endl;
         cout << e.what() << endl;
         exit(1);
@@ -645,6 +659,7 @@ status_code sendLogout() {
         loggedID = L"";
     }
     else {
+        system("CLS");
         wcout << response.extract_utf16string().get() << endl;
     }
     return response.status_code();
@@ -675,12 +690,12 @@ int main()
                     pinNum = stoi(pin);
                 }
                 catch (exception& e) {
+                    system("CLS");
                     cout << "Invalid login details. Please try again." << endl;
                 }
                 if (pinNum != 0) {
                     hashed = hash(std::stoi(pin));
                     pin = to_string(hashed);
-                    cout << hashed << endl;
                     wstring idToSend = aesEncrypt(id);
                     wstring pinToSend = aesEncrypt(pin);
                     code = sendLogin(idToSend, pinToSend);
@@ -690,6 +705,7 @@ int main()
                 }
             } while (code != status_codes::OK);
             int in = 0;
+            system("CLS");
             // Start the heartbeat thread to keep the account logged in.
             std::thread heartbeatThread(heartbeat);
             do {
@@ -702,6 +718,7 @@ int main()
                     in = stoi(input);
                 }
                 catch (exception& e) {
+                    system("CLS");
                     cout << "Please enter a number when trying to perform actions." << endl;
                 }
                 switch (in) {
@@ -718,24 +735,29 @@ int main()
                     debitMenu();
                     break;
                 case 5:
+                    system("CLS");
                     std::cout << "Logging out..." << std::endl;
                     sendLogout();
                     heartbeatThread.join();
                     break;
                 default:
+                    system("CLS");
                     std::cout << "Invalid choice. Please try again." << std::endl;
                     break;
                 }
             } while (in != 5);
         }
         else {
+            system("CLS");
             cout << "Unable to connect to the server." << endl;
         }
     }
     catch (exception& e) {
+        system("CLS");
         cout << e.what() << endl;
     }
     // Delete key and IV to prevent memory leaks
+    system("CLS");
     cout << "Goodbye!" << endl;
     delete[] aesKey;
     delete[] iv;
