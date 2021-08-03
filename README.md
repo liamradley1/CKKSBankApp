@@ -12,6 +12,6 @@ Key files:
 - DBHandler.cpp: Communicator class with the DBMS.
 
 - For files relating to the central server, check the Server directory. Similar logic applies to find files for the debit server, interest server, cloud server, benchmarking and client.
-- The project directory creates executable files, which have been moved to the Executables directory for convenience. The CentralServer directory inside Executables contains the Server, DebitServer and InterestServer executables.
+- The project directory creates executable files, which have been moved to the Executables directory for convenience. The CentralServer directory inside Executables contains the Server, DebitServer and InterestServer executables. The location of the CloudServer and Client executables are intuitive.
 - The configuration is currently set to run on a local machine. This is for demonstration purposes.
 - If setting this demo up to run locally, you must create a MySQL database as per the BankDB SQL script. Some alterations may need to be made within the DBHandler class files to reflect the username and password for your system.
