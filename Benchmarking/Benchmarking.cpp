@@ -990,8 +990,6 @@ int ckksDecryptBenchmarkRelin(int iterations) {
     seal::Decryptor decryptor(context, key);
     seal::CKKSEncoder encoder(context);
     seal::Evaluator eval(context);
-    seal::RelinKeys relinKeys;
-    keyGen.create_relin_keys(relinKeys);
     double scale = pow(2, 20);
     double lowerBound = 0.00;
     double upperBound = 1.00;
@@ -1583,7 +1581,7 @@ int main()
         relin1.join();
         relin2.join();
 
-        vector<int> runs = relinTest6(1000);
+        vector<int> runs = relinTest6(1);
         ofstream out5("relinTest6.txt");
 
         for (int i = 0; i < runs.size(); ++i) {
@@ -1592,7 +1590,7 @@ int main()
         
         out5.close();
         ofstream out6("relinTest5.txt");
-        vector<int> runs = relinTest5(1000);
+        runs = relinTest5(1000);
         for (int i = 0; i < runs.size(); ++i) {
             out6 << runs[i] << endl;
         }
@@ -1600,7 +1598,7 @@ int main()
         out6.close();
 
         ofstream out7("relinTest7.txt");
-        vector<int> runs = relinTest7(1000);
+        runs = relinTest7(1000);
         for (int i = 0; i < runs.size(); ++i) {
             out7 << runs[i] << endl;
         }
@@ -1616,15 +1614,13 @@ int main()
         out8.close();
 
 
-
-
-        
+        int it = 10000;
         cout << "Addition:" << endl;
-        thread aesAddThread(aesAddBenchmarking, iterations);
-        thread rsaAddThread1(rsaAddBenchmarking, iterations, 2048);
-        thread ckksAddThread(ckksAesAddBenchmarking, iterations);
-        thread rsaAddThread2(rsaAddBenchmarking, iterations, 4096);
-        thread ckksAddThread2(ckksAesAddBenchmarkingRelin, iterations);
+        thread aesAddThread(aesAddBenchmarking, it);
+        thread rsaAddThread1(rsaAddBenchmarking, it, 2048);
+        thread ckksAddThread(ckksAesAddBenchmarking, it);
+        thread rsaAddThread2(rsaAddBenchmarking, it, 4096);
+        thread ckksAddThread2(ckksAesAddBenchmarkingRelin, it);
         aesAddThread.join();
         rsaAddThread1.join();
         ckksAddThread.join();
@@ -1632,11 +1628,11 @@ int main()
         ckksAddThread2.join();
 
         cout << "Subtraction:" << endl;
-        thread aesSubThread(aesSubBenchmarking, iterations);
-        thread rsaSubThread1(rsaSubBenchmarking, iterations, 2048);
-        thread ckksSubThread(ckksAesSubBenchmarking, iterations);
-        thread rsaSubThread2(rsaSubBenchmarking, iterations, 4096);
-        thread ckksSubThread2(ckksAesSubBenchmarkingRelin, iterations);
+        thread aesSubThread(aesSubBenchmarking, it);
+        thread rsaSubThread1(rsaSubBenchmarking, it, 2048);
+        thread ckksSubThread(ckksAesSubBenchmarking, it);
+        thread rsaSubThread2(rsaSubBenchmarking, it, 4096);
+        thread ckksSubThread2(ckksAesSubBenchmarkingRelin, it);
 
         aesSubThread.join();
         rsaSubThread1.join();
@@ -1645,11 +1641,11 @@ int main()
         ckksSubThread2.join();
 
         cout << "Multiplication:" << endl;
-        thread aesMultThread(aesMultBenchmarking, iterations);
-        thread rsaMultThread1(rsaMultBenchmarking, iterations, 2048);
-        thread ckksMultThread1(ckksAesMultBenchmarkingRelin, iterations);
-        thread ckksMultThread2(ckksAesMultBenchmarkingNoRelin, iterations);
-        thread rsaMultThread2(rsaMultBenchmarking, iterations, 4096);
+        thread aesMultThread(aesMultBenchmarking, it);
+        thread rsaMultThread1(rsaMultBenchmarking, it, 2048);
+        thread ckksMultThread1(ckksAesMultBenchmarkingRelin, it);
+        thread ckksMultThread2(ckksAesMultBenchmarkingNoRelin, it);
+        thread rsaMultThread2(rsaMultBenchmarking, it, 4096);
 
         aesMultThread.join();
         rsaMultThread1.join();
@@ -1658,10 +1654,10 @@ int main()
         rsaMultThread2.join();
 
         cout << "Decryption:" << endl;
-        thread aesDecryptThread(aesDecryptBenchmark, iterations);
-        thread rsaDecryptThread1(rsaDecryptBenchmark, iterations, 2048);
-        thread ckksDecryptThread(ckksDecryptBenchmark, iterations);
-        thread rsaDecryptThread2(rsaDecryptBenchmark, iterations, 4096);
+        thread aesDecryptThread(aesDecryptBenchmark, it);
+        thread rsaDecryptThread1(rsaDecryptBenchmark, it, 2048);
+        thread ckksDecryptThread(ckksDecryptBenchmark, it);
+        thread rsaDecryptThread2(rsaDecryptBenchmark, it, 4096);
 
         aesDecryptThread.join();
         rsaDecryptThread1.join();
