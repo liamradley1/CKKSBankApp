@@ -1581,7 +1581,7 @@ int main()
         relin1.join();
         relin2.join();
 
-        vector<int> runs = relinTest6(1);
+        vector<int> runs = relinTest6(1000);
         ofstream out5("relinTest6.txt");
 
         for (int i = 0; i < runs.size(); ++i) {
